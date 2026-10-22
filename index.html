@@ -598,7 +598,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v5 · 1712";
+  var BUILD = "v5 · 1740";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -765,7 +765,7 @@
   /* ---------- 云端同步：一份 JSON 存在 GitHub 私有仓库里 ---------- */
   var SYNC_KEY = "yogurt-sync-v1";
   var syncCfg = {on:false, repo:"", token:"", path:"yogurt-data.json", branch:"main"};
-  var syncRt  = {sha:null, lastTs:0, timer:null, busy:false};
+  var syncRt  = {sha:null, lastTs:0, timer:null, busy:false, busyAt:0, dirty:false, lastCheck:0};
 
   (function(){
     try{
@@ -806,7 +806,35 @@
       "X-GitHub-Api-Version":"2022-11-28"
     };
     if(opts.body) opts.headers["Content-Type"] = "application/json";
-    return fetch(url, opts);
+    // 必须带超时：手机弱网下 fetch 可能长时间挂起，把同步锁永久卡死，之后所有操作静默失效
+    if(typeof AbortController === "undefined") return fetch(url, opts);
+    var ac = new AbortController();
+    opts.signal = ac.signal;
+    var to = setTimeout(function(){ try{ ac.abort(); }catch(e){} }, 20000);
+    return fetch(url, opts).then(
+      function(r){ clearTimeout(to); return r; },
+      function(e){
+        clearTimeout(to);
+        if(e && (e.name === "AbortError" || String(e).indexOf("abort") >= 0)) throw new Error("网络超时（20 秒无响应）");
+        throw e;
+      }
+    );
+  }
+
+  // 同步锁：带卡死兜底。超过 90 秒仍未复位就强制释放，避免一次挂起导致之后永久静默失效。
+  function isBusy(){
+    if(!syncRt.busy) return false;
+    if(Date.now() - (syncRt.busyAt||0) > 90000){ syncRt.busy = false; syncRt.busyAt = 0; return false; }
+    return true;
+  }
+  function setBusy(v){
+    syncRt.busy = !!v;
+    syncRt.busyAt = v ? Date.now() : 0;
+  }
+
+  function dataBrief(s){
+    if(!s) return "无数据";
+    return ((s.products||[]).length) + " 个产品 / " + ((s.ingredients||[]).length) + " 种原料";
   }
 
   function apiErr(r){
@@ -855,25 +883,41 @@
   }
 
   function schedulePush(){
+    syncRt.dirty = true;
     if(syncRt.timer) clearTimeout(syncRt.timer);
     setSyncStatus("wait", "本机有改动，约 2 秒后自动上传…");
     syncRt.timer = setTimeout(function(){ syncRt.timer = null; pushLocal(); }, 1800);
   }
 
+  // 内容指纹：不依赖时钟，用来判断两端数据是否真的相同
+  function sigOf(s){
+    if(!s) return "";
+    var str;
+    try{ str = JSON.stringify({p:s.products||[], i:s.ingredients||[], f:s.fixed||{}, m:s.sim||{}, l:s.log||[]}); }
+    catch(e){ str = String(s); }
+    var h = 5381;
+    for(var i=0;i<str.length;i++){ h = ((h<<5)+h+str.charCodeAt(i))|0; }
+    return (h>>>0).toString(36) + ":" + str.length;
+  }
+
   async function pushLocal(){
-    if(!syncReady() || syncRt.busy) return false;
-    syncRt.busy = true;
+    if(!syncReady()) return false;
+    if(isBusy()){ syncRt.dirty = true; return false; }   // 不丢改动，标记为待推送
+    setBusy(true);
     try{
-      var ts = state.updatedAt || Date.now();
+      var ts = Math.max(state.updatedAt || 0, Date.now());
+      state.updatedAt = ts;
       await remotePut({schema:1, updatedAt:ts, data:state});
       syncRt.lastTs = ts;
-      setSyncStatus("ok", "改动已上传到云端。");
+      syncRt.dirty = false;
+      setSyncStatus("ok", "已同步 · 改动已上传（" + dataBrief(state) + "，" + fmtWhen(ts) + "）。");
       return true;
     }catch(e){
-      if(String(e.message)==="CONFLICT"){ syncRt.busy = false; return syncNow(false); }
-      setSyncStatus("err", "上传失败：" + e.message + "（数据仍在本机，下次打开会重试）");
+      if(String(e.message)==="CONFLICT"){ setBusy(false); return syncNow(false); }
+      syncRt.dirty = true;
+      setSyncStatus("err", "上传失败：" + e.message + "（数据仍在本机，联网后会自动重试）");
       return false;
-    }finally{ syncRt.busy = false; }
+    }finally{ setBusy(false); }
   }
 
   async function syncNow(manual){
@@ -881,46 +925,58 @@
       if(manual) alert("还没启用同步：请填写仓库和 token，再点「保存并启用」。");
       return false;
     }
-    if(syncRt.busy) return false;
-    syncRt.busy = true;
+    if(isBusy()){
+      if(manual) setSyncStatus("busy", "上一次同步还没结束，等几秒再点一次。");
+      return false;
+    }
+    setBusy(true);
     try{
       setSyncStatus("busy", "正在与云端核对…");
       var rem = await remoteGet();
       var localTs = state.updatedAt || 0;
+      var localBrief = dataBrief(state);
       if(!rem || !rem.data){
-        var t0 = localTs || Date.now();
+        var t0 = Math.max(localTs, Date.now());
+        state.updatedAt = t0;
         await remotePut({schema:1, updatedAt:t0, data:state});
-        syncRt.lastTs = t0;
-        setSyncStatus("ok", "云端已建立数据文件（首次上传完成）。");
+        syncRt.lastTs = t0; syncRt.dirty = false;
+        setSyncStatus("ok", "已同步 · 云端已建立数据文件（本机 " + localBrief + "）。");
         return true;
       }
       var remTs = rem.updatedAt || 0;
-      var last = syncRt.lastTs || 0;
-      var localChanged  = localTs > last + 500;
-      var remoteChanged = remTs  > last + 500;
-      if(localChanged && remoteChanged && last > 0 && Math.abs(localTs - remTs) > 2000){
-        var useRemote = confirm("云端和本机都有新改动，需要你选一个：\n\n【确定】用云端的（本机这次改动会丢）\n【取消】用本机的（覆盖云端）");
-        if(useRemote){ applyRemote(rem); return true; }
-        await remotePut({schema:1, updatedAt:localTs, data:state});
-        syncRt.lastTs = localTs;
-        setSyncStatus("ok", "已用本机数据覆盖云端。");
+      var remBrief = dataBrief(rem.data);
+      if(sigOf(state) === sigOf(rem.data)){
+        syncRt.lastTs = Math.max(localTs, remTs);
+        syncRt.dirty = false;
+        setSyncStatus("ok", "已同步 · 两端一致（" + localBrief + "，云端更新于 " + fmtWhen(remTs) + "）。");
         return true;
       }
-      if(remTs > localTs + 500){ applyRemote(rem); return true; }
       if(localTs > remTs + 500){
         await remotePut({schema:1, updatedAt:localTs, data:state});
-        syncRt.lastTs = localTs;
-        setSyncStatus("ok", "本机改动已上传。");
+        syncRt.lastTs = localTs; syncRt.dirty = false;
+        setSyncStatus("ok", "已同步 · 本机数据已上传：本机 " + localBrief + "，云端原有 " + remBrief + "。");
         return true;
       }
-      syncRt.lastTs = Math.max(localTs, remTs);
-      setSyncStatus("ok", "两端一致，无需更新。");
+      if(remTs > localTs + 500){
+        applyRemote(rem);
+        setSyncStatus("ok", "已同步 · 已拉取云端数据：" + remBrief + "（" + fmtWhen(remTs) + "），本机原有 " + localBrief + "。");
+        return true;
+      }
+      // 时间几乎相同但内容不同：必须让人来定，不能静默挑一个
+      var diff = "本机 " + localBrief + "（" + fmtWhen(localTs) + "）\n云端 " + remBrief + "（" + fmtWhen(remTs) + "）";
+      var pickRemote = manual ? confirm("本机和云端内容不同，时间又几乎一样：\n\n" + diff + "\n\n【确定】用云端的（本机这次改动会丢）\n【取消】用本机的（覆盖云端）") : false;
+      if(pickRemote){ applyRemote(rem); return true; }
+      state.updatedAt = Date.now();
+      await remotePut({schema:1, updatedAt:state.updatedAt, data:state});
+      syncRt.lastTs = state.updatedAt; syncRt.dirty = false;
+      setSyncStatus("ok", "已同步 · 已用本机数据覆盖云端（" + localBrief + "）。");
       return true;
     }catch(e){
+      syncRt.dirty = true;
       setSyncStatus("err", "同步失败：" + e.message);
       if(manual) alert("同步失败：" + e.message);
       return false;
-    }finally{ syncRt.busy = false; syncRt.lastCheck = Date.now(); }
+    }finally{ setBusy(false); syncRt.lastCheck = Date.now(); }
   }
 
   /* ---------- 渲染：KPI ---------- */
@@ -1483,7 +1539,11 @@
         var tok  = (sTokEl.value||"").trim();
         if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ alert("仓库请填成「用户名/仓库名」，例如 xinyechen958-ops/yogurt-data"); return; }
         if(!tok){ alert("请先粘贴 token"); return; }
-        if(!confirm("启用后本机与云端双向同步：云端还没有数据就把本机数据传上去；云端已有更新的数据则覆盖本机。建议先在主力设备上启用，继续？")) return;
+        var isSample = !state.updatedAt;
+        var msg = isSample
+          ? "注意：这台设备现在还是「示例数据」，你自己还没改过。如果云端已经有真实数据，现在启用会被示例数据覆盖。确定继续？"
+          : "启用后本机与云端双向同步：云端没有数据就把本机传上去，云端数据更新则覆盖本机。建议先在主力设备上启用，继续？";
+        if(!confirm(msg)) return;
         syncCfg.repo = repo; syncCfg.token = tok; syncCfg.on = true;
         syncRt.sha = null; syncRt.lastTs = 0; syncRt.lastCheck = 0;
         persistSyncCfg();
@@ -1504,7 +1564,15 @@
       });
     }
     document.addEventListener("visibilitychange", function(){
-      if(!document.hidden && syncReady() && Date.now()-(syncRt.lastCheck||0) > 15000) syncNow(false);
+      if(document.hidden){
+        // 切到后台后浏览器会把 setTimeout 节流到分钟级，1.8 秒的自动上传可能永远不执行 → 立刻补发
+        if(syncRt.timer){ clearTimeout(syncRt.timer); syncRt.timer = null; }
+        if(syncReady() && syncRt.dirty && !isBusy()) pushLocal();
+        return;
+      }
+      if(!syncReady()) return;
+      if(syncRt.dirty && !isBusy()){ pushLocal(); return; }
+      if(Date.now()-(syncRt.lastCheck||0) > 15000) syncNow(false);
     });
 
     // 模块切换
