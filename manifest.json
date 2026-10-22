@@ -1,0 +1,20 @@
+{
+  "name": "希腊酸奶店 · 成本利润计算器",
+  "short_name": "酸奶算账",
+  "description": "原料价格实时联动，单碗成本、毛利率与月度净利一屏掌握",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f7f9",
+  "theme_color": "#0d9488",
+  "categories": ["business", "productivity", "finance"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

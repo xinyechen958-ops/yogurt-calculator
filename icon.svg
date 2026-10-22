@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#14b8a6"/>
+      <stop offset="1" stop-color="#0d9488"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- 碗体 -->
+  <path d="M96 232 h320 c0 92 -72 152 -160 152 s-160 -60 -160 -152 z" fill="#ffffff"/>
+  <!-- 酸奶面 -->
+  <ellipse cx="256" cy="232" rx="160" ry="34" fill="#f7fbfb"/>
+  <ellipse cx="256" cy="232" rx="160" ry="34" fill="#ffffff" opacity="0.9"/>
+  <!-- 莓果 -->
+  <circle cx="212" cy="226" r="20" fill="#7c3aed"/>
+  <circle cx="256" cy="216" r="18" fill="#e11d48"/>
+  <circle cx="300" cy="228" r="20" fill="#7c3aed"/>
+  <circle cx="232" cy="246" r="14" fill="#f59e0b"/>
+  <circle cx="284" cy="248" r="13" fill="#0ea5e9"/>
+  <!-- 麦片粒 -->
+  <rect x="196" y="266" width="26" height="11" rx="5.5" fill="#d9a066"/>
+  <rect x="246" y="272" width="28" height="11" rx="5.5" fill="#c98f52"/>
+  <rect x="292" y="264" width="24" height="11" rx="5.5" fill="#d9a066"/>
+</svg>
