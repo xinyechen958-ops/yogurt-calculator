@@ -8,9 +8,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="manifest" href="manifest.json?v=5">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=5">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=5">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -90,7 +90,7 @@
   tbody tr:hover{background:#fafbfc;}
   tfoot td{font-weight:600;border-bottom:none;background:#fafbfc;}
 
-  input[type=text],input[type=number],select{
+  input[type=text],input[type=number],input[type=password],select{
     font:inherit;color:inherit;width:100%;padding:5px 8px;
     border:1px solid var(--line-strong);border-radius:7px;background:#fff;
   }
@@ -231,7 +231,7 @@
     .scroll-x table{min-width:600px;}
     .scroll-x.narrow table{min-width:0;}
     th,td{padding:7px 8px;font-size:12.5px;white-space:nowrap;}
-    input[type=text],input[type=number],select{padding:8px 9px;font-size:14px;} /* ≥14px 防 iOS 自动缩放 */
+    input[type=text],input[type=number],input[type=password],select{padding:8px 9px;font-size:14px;} /* ≥14px 防 iOS 自动缩放 */
     input[type=number]{min-width:64px;}
     td input[type=number]{min-width:70px;}
 
@@ -372,7 +372,16 @@
     .prod .add-row .add-amt{width:auto !important;flex:1 1 auto;min-width:0;}
     .prod .add-row .add-btn{flex:0 0 auto;white-space:nowrap;}
   }
+  /* 390px 是最常见的手机宽度，这里仍保持两列，只把卡片收紧 */
   @media (max-width:400px){
+    .kpis{gap:8px;}
+    .kpi{padding:10px;border-radius:9px;}
+    .kpi .k-label{font-size:11px;line-height:1.25;}
+    .kpi .k-value{font-size:17px;margin-top:3px;letter-spacing:0;}
+    .kpi .k-sub{font-size:10px;line-height:1.3;margin-top:2px;}
+  }
+  /* 只有超窄机型（≤340px）才退化为单列 */
+  @media (max-width:340px){
     .kpis{grid-template-columns:1fr;}
   }
 
@@ -542,9 +551,33 @@
     <div class="log" id="logBox"></div>
   </section>
 
+  <!-- 云端同步 -->
   <section class="card" data-view="data">
-    <h2>⑦ 数据与备份</h2>
-    <p class="desc">数据存在当前设备的浏览器里，换设备请先「导出数据」备份，再在新设备「导入数据」。</p>
+    <h2>⑦ 云端同步 <span class="pill" id="syncPill">未开启</span></h2>
+    <p class="desc">开启后，电脑和任意几台手机都读写同一个私有仓库里的数据文件：改一处，其他设备下次打开就是最新数据。</p>
+    <div class="note" style="margin:0 0 14px;padding:10px 12px;background:#fafbfc;border:1px solid var(--line);border-radius:8px">
+      <b>三步开启（只需做一次）：</b><br>
+      1. <a href="https://github.com/new?name=yogurt-data&amp;visibility=private" target="_blank" rel="noopener">新建私有仓库</a>：名字填 <b>yogurt-data</b>，选 <b>Private</b>，不要勾任何初始化选项<br>
+      2. <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">生成 token</a>：Only select repositories 只勾刚建的仓库 → Permissions 里 <b>Contents 设为 Read and write</b> → 有效期建议 1 年<br>
+      3. 把仓库名和 token 填进下面两栏，点「保存并启用」<br>
+      <span class="muted">建议先在平时用的主力设备上开启，把它的数据当起点；另外几台填同样的仓库和 token 即可。</span>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>仓库（用户名/仓库名）</label><input type="text" id="sRepo" placeholder="xinyechen958-ops/yogurt-data" autocomplete="off"></div>
+      <div class="field"><label>token（只存本机浏览器）</label><input type="password" id="sToken" placeholder="github_pat_…" autocomplete="off"></div>
+    </div>
+    <div class="btn-row" style="margin-top:12px">
+      <button id="btnSyncSave" class="primary">保存并启用</button>
+      <button id="btnSyncNow">立即同步</button>
+      <button id="btnSyncOff" class="ghost">关闭同步</button>
+      <button id="btnSyncClear" class="ghost">清除 token</button>
+    </div>
+    <div id="syncStatus" class="note" style="margin-top:10px">未开启云端同步 —— 数据只存在这台设备的浏览器里。</div>
+  </section>
+
+  <section class="card" data-view="data">
+    <h2>⑧ 备份与打印</h2>
+    <p class="desc">导出/导入是「手动搬运」，适合没开云端同步时换设备，或做一份离线存档。</p>
     <div class="btn-row">
       <button id="btnExport">导出数据</button>
       <button id="btnImport">导入数据</button>
@@ -565,7 +598,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v4 · 1410";
+  var BUILD = "v5 · 1712";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -616,7 +649,8 @@
       ],
       fixed:{rent:8000,labor:12000,util:1500,other:1000,pack:1.2,rate:18,days:30,target:20000},
       sim:{},
-      log:[]
+      log:[],
+      updatedAt:0
     };
   }
 
@@ -697,20 +731,26 @@
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
 
   /* ---------- 持久化 ---------- */
-  function save(){
+  function normalize(s){
+    if(!s || !s.ingredients || !s.products) throw new Error("数据格式不对");
+    s.fixed = Object.assign(defaults().fixed, s.fixed||{});
+    s.sim = s.sim||{};
+    s.log = s.log||[];
+    s.updatedAt = s.updatedAt||0;
+    // 兼容旧数据：配方行补 id
+    s.products.forEach(function(p){ (p.recipe||[]).forEach(function(r){ if(!r.id) r.id = uid("r"); }); });
+    return s;
+  }
+  function save(opts){
+    opts = opts||{};
+    if(!opts.keepTs) state.updatedAt = Date.now();
     try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+    if(syncCfg && syncCfg.on && !opts.nosync) schedulePush();
   }
   function load(){
     try{
       var raw = localStorage.getItem(STORE_KEY);
-      if(raw){
-        var s = JSON.parse(raw);
-        if(s && s.ingredients && s.products){ 
-          s.fixed = Object.assign(defaults().fixed, s.fixed||{});
-          s.sim = s.sim||{}; s.log = s.log||[];
-          return s;
-        }
-      }
+      if(raw) return normalize(JSON.parse(raw));
     }catch(e){}
     return defaults();
   }
@@ -720,6 +760,167 @@
     var t = (d.getMonth()+1)+"/"+d.getDate()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
     state.log.unshift({t:t, name:name, old:oldV, nw:newV});
     if(state.log.length>60) state.log.length=60;
+  }
+
+  /* ---------- 云端同步：一份 JSON 存在 GitHub 私有仓库里 ---------- */
+  var SYNC_KEY = "yogurt-sync-v1";
+  var syncCfg = {on:false, repo:"", token:"", path:"yogurt-data.json", branch:"main"};
+  var syncRt  = {sha:null, lastTs:0, timer:null, busy:false};
+
+  (function(){
+    try{
+      var raw = localStorage.getItem(SYNC_KEY);
+      if(raw){
+        var o = JSON.parse(raw);
+        if(o) ["on","repo","token","path","branch"].forEach(function(k){ if(o[k]!=null) syncCfg[k]=o[k]; });
+      }
+    }catch(e){}
+  })();
+  function persistSyncCfg(){ try{ localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg)); }catch(e){} }
+  function syncReady(){ return !!(syncCfg.on && syncCfg.repo && syncCfg.token); }
+
+  function b64enc(str){ return btoa(unescape(encodeURIComponent(str))); }
+  function b64dec(str){ return decodeURIComponent(escape(atob(String(str).replace(/\s+/g,"")))); }
+
+  function fmtWhen(ts){
+    if(!ts) return "—";
+    var d = new Date(ts), n = new Date();
+    var hm = String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+    if(d.toDateString()===n.toDateString()) return "今天 "+hm;
+    return (d.getMonth()+1)+"/"+d.getDate()+" "+hm;
+  }
+
+  function setSyncStatus(kind, text){
+    var el = document.getElementById("syncStatus");
+    var pill = document.getElementById("syncPill");
+    var map = {off:"未开启", ok:"已同步", busy:"同步中", err:"同步异常", wait:"待上传"};
+    if(pill) pill.textContent = map[kind]||kind;
+    if(el) el.innerHTML = text;
+  }
+
+  function ghFetch(url, opts){
+    opts = opts||{};
+    opts.headers = {
+      "Accept":"application/vnd.github+json",
+      "Authorization":"Bearer " + syncCfg.token,
+      "X-GitHub-Api-Version":"2022-11-28"
+    };
+    if(opts.body) opts.headers["Content-Type"] = "application/json";
+    return fetch(url, opts);
+  }
+
+  function apiErr(r){
+    if(r.status===401) return new Error("token 无效或已过期");
+    if(r.status===403) return new Error("token 权限不足（需该仓库的 Contents 读写）");
+    if(r.status===404) return new Error("仓库/文件不存在，或 token 没勾选这个仓库");
+    return new Error("HTTP " + r.status);
+  }
+
+  async function remoteGet(){
+    var url = "https://api.github.com/repos/" + syncCfg.repo + "/contents/" + syncCfg.path
+            + "?ref=" + encodeURIComponent(syncCfg.branch) + "&t=" + Date.now();
+    var r = await ghFetch(url);
+    if(r.status===404) return null;
+    if(!r.ok) throw apiErr(r);
+    var j = await r.json();
+    if(!j || !j.content) throw new Error("云端文件为空");
+    syncRt.sha = j.sha;
+    return JSON.parse(b64dec(j.content));
+  }
+
+  async function remotePut(payload){
+    var body = {
+      message: "sync " + new Date().toISOString(),
+      content: b64enc(JSON.stringify(payload)),
+      branch: syncCfg.branch
+    };
+    if(syncRt.sha) body.sha = syncRt.sha;
+    var r = await ghFetch("https://api.github.com/repos/" + syncCfg.repo + "/contents/" + syncCfg.path, {
+      method:"PUT", body: JSON.stringify(body)
+    });
+    if(r.status===409 || r.status===422) throw new Error("CONFLICT");
+    if(!r.ok) throw apiErr(r);
+    var j = await r.json();
+    if(j && j.content && j.content.sha) syncRt.sha = j.content.sha;
+    return true;
+  }
+
+  function applyRemote(rem){
+    state = normalize(rem.data);
+    state.updatedAt = rem.updatedAt || state.updatedAt || Date.now();
+    save({nosync:true, keepTs:true});
+    fillFixed(); renderAll();
+    syncRt.lastTs = state.updatedAt;
+    setSyncStatus("ok", "已拉取云端最新数据（" + fmtWhen(syncRt.lastTs) + " 的版本）。");
+  }
+
+  function schedulePush(){
+    if(syncRt.timer) clearTimeout(syncRt.timer);
+    setSyncStatus("wait", "本机有改动，约 2 秒后自动上传…");
+    syncRt.timer = setTimeout(function(){ syncRt.timer = null; pushLocal(); }, 1800);
+  }
+
+  async function pushLocal(){
+    if(!syncReady() || syncRt.busy) return false;
+    syncRt.busy = true;
+    try{
+      var ts = state.updatedAt || Date.now();
+      await remotePut({schema:1, updatedAt:ts, data:state});
+      syncRt.lastTs = ts;
+      setSyncStatus("ok", "改动已上传到云端。");
+      return true;
+    }catch(e){
+      if(String(e.message)==="CONFLICT"){ syncRt.busy = false; return syncNow(false); }
+      setSyncStatus("err", "上传失败：" + e.message + "（数据仍在本机，下次打开会重试）");
+      return false;
+    }finally{ syncRt.busy = false; }
+  }
+
+  async function syncNow(manual){
+    if(!syncReady()){
+      if(manual) alert("还没启用同步：请填写仓库和 token，再点「保存并启用」。");
+      return false;
+    }
+    if(syncRt.busy) return false;
+    syncRt.busy = true;
+    try{
+      setSyncStatus("busy", "正在与云端核对…");
+      var rem = await remoteGet();
+      var localTs = state.updatedAt || 0;
+      if(!rem || !rem.data){
+        var t0 = localTs || Date.now();
+        await remotePut({schema:1, updatedAt:t0, data:state});
+        syncRt.lastTs = t0;
+        setSyncStatus("ok", "云端已建立数据文件（首次上传完成）。");
+        return true;
+      }
+      var remTs = rem.updatedAt || 0;
+      var last = syncRt.lastTs || 0;
+      var localChanged  = localTs > last + 500;
+      var remoteChanged = remTs  > last + 500;
+      if(localChanged && remoteChanged && last > 0 && Math.abs(localTs - remTs) > 2000){
+        var useRemote = confirm("云端和本机都有新改动，需要你选一个：\n\n【确定】用云端的（本机这次改动会丢）\n【取消】用本机的（覆盖云端）");
+        if(useRemote){ applyRemote(rem); return true; }
+        await remotePut({schema:1, updatedAt:localTs, data:state});
+        syncRt.lastTs = localTs;
+        setSyncStatus("ok", "已用本机数据覆盖云端。");
+        return true;
+      }
+      if(remTs > localTs + 500){ applyRemote(rem); return true; }
+      if(localTs > remTs + 500){
+        await remotePut({schema:1, updatedAt:localTs, data:state});
+        syncRt.lastTs = localTs;
+        setSyncStatus("ok", "本机改动已上传。");
+        return true;
+      }
+      syncRt.lastTs = Math.max(localTs, remTs);
+      setSyncStatus("ok", "两端一致，无需更新。");
+      return true;
+    }catch(e){
+      setSyncStatus("err", "同步失败：" + e.message);
+      if(manual) alert("同步失败：" + e.message);
+      return false;
+    }finally{ syncRt.busy = false; syncRt.lastCheck = Date.now(); }
   }
 
   /* ---------- 渲染：KPI ---------- */
@@ -1257,10 +1458,7 @@
       var fr=new FileReader();
       fr.onload=function(){
         try{
-          var s=JSON.parse(fr.result);
-          if(!s.ingredients||!s.products) throw new Error("格式不对");
-          s.fixed = Object.assign(defaults().fixed, s.fixed||{});
-          s.sim = s.sim||{}; s.log=s.log||[];
+          var s=normalize(JSON.parse(fr.result));
           state=s; save(); fillFixed(); renderAll();
           alert("导入成功");
         }catch(err){ alert("导入失败："+err.message); }
@@ -1273,6 +1471,41 @@
       state = defaults(); save(); fillFixed(); renderAll();
     });
     document.getElementById("btnPrint").addEventListener("click", function(){ window.print(); });
+
+    // 云端同步
+    var sRepoEl = document.getElementById("sRepo");
+    var sTokEl  = document.getElementById("sToken");
+    if(sRepoEl) sRepoEl.value = syncCfg.repo || "";
+    if(sTokEl)  sTokEl.value  = syncCfg.token || "";
+    if(document.getElementById("btnSyncSave")){
+      document.getElementById("btnSyncSave").addEventListener("click", function(){
+        var repo = (sRepoEl.value||"").trim().replace(/^https?:\/\/(www\.)?github\.com\//i,"").replace(/\.git$/i,"").replace(/\/+$/,"");
+        var tok  = (sTokEl.value||"").trim();
+        if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ alert("仓库请填成「用户名/仓库名」，例如 xinyechen958-ops/yogurt-data"); return; }
+        if(!tok){ alert("请先粘贴 token"); return; }
+        if(!confirm("启用后本机与云端双向同步：云端还没有数据就把本机数据传上去；云端已有更新的数据则覆盖本机。建议先在主力设备上启用，继续？")) return;
+        syncCfg.repo = repo; syncCfg.token = tok; syncCfg.on = true;
+        syncRt.sha = null; syncRt.lastTs = 0; syncRt.lastCheck = 0;
+        persistSyncCfg();
+        syncNow(true);
+      });
+      document.getElementById("btnSyncNow").addEventListener("click", function(){ syncNow(true); });
+      document.getElementById("btnSyncOff").addEventListener("click", function(){
+        if(!syncCfg.on){ setSyncStatus("off", "当前本来就没开启。"); return; }
+        if(!confirm("关闭后这台设备不再上传/下载，但云端已有文件不会被删除。确定关闭？")) return;
+        syncCfg.on = false; persistSyncCfg();
+        setSyncStatus("off", "已关闭同步 —— 数据只存在这台设备，云端文件保留。");
+      });
+      document.getElementById("btnSyncClear").addEventListener("click", function(){
+        if(!confirm("清除本机保存的 token？清除后要重新填写才能同步。")) return;
+        syncCfg.token = ""; syncCfg.on = false; persistSyncCfg();
+        if(sTokEl) sTokEl.value = "";
+        setSyncStatus("off", "token 已从本机清除。");
+      });
+    }
+    document.addEventListener("visibilitychange", function(){
+      if(!document.hidden && syncReady() && Date.now()-(syncRt.lastCheck||0) > 15000) syncNow(false);
+    });
 
     // 模块切换
     var tabsEl = document.getElementById("tabs");
@@ -1305,13 +1538,13 @@
 
   /* ---------- 启动 ---------- */
   state = load();
-  // 兼容旧数据：配方行补 id
-  state.products.forEach(function(p){
-    p.recipe.forEach(function(r){ if(!r.id) r.id = uid("r"); });
-  });
   fillFixed();
   bind();
   renderAll();
+  if(syncReady()){
+    setSyncStatus("busy", "已开启同步 · 仓库 " + syncCfg.repo + "，正在核对…");
+    setTimeout(function(){ syncNow(false); }, 600);
+  }
   var vt = document.getElementById("vtag");
   if(vt) vt.textContent = BUILD;
 
