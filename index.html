@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d9488">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="酸奶算账">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<title>希腊酸奶店 · 成本利润计算器</title>
+<style>
+  :root{
+    --bg:#f5f7f9;
+    --card:#ffffff;
+    --line:#e5e9ee;
+    --line-strong:#d3dae2;
+    --text:#1f2733;
+    --text-2:#5b6875;
+    --text-3:#8b98a5;
+    --accent:#0d9488;
+    --accent-soft:#e6f5f3;
+    --berry:#e11d48;
+    --berry-soft:#fdeaee;
+    --blue:#2563eb;
+    --warn:#b45309;
+    --warn-soft:#fef3c7;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
+    font-size:14px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 18px 80px;}
+
+  header.top{
+    display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+    flex-wrap:wrap;margin-bottom:18px;
+  }
+  header.top h1{margin:0;font-size:21px;letter-spacing:.3px;}
+  header.top .sub{color:var(--text-3);font-size:12.5px;margin-top:4px;}
+  .top-actions{display:flex;gap:8px;flex-wrap:wrap;}
+
+  button, .btn{
+    font:inherit;cursor:pointer;border:1px solid var(--line-strong);
+    background:#fff;color:var(--text);border-radius:8px;padding:7px 13px;
+    transition:.15s;
+  }
+  button:hover, .btn:hover{border-color:var(--accent);color:var(--accent);}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  button.primary:hover{background:#0b8378;color:#fff;}
+  button.ghost{border-color:transparent;color:var(--text-2);padding:6px 9px;}
+  button.ghost:hover{color:var(--berry);background:var(--berry-soft);border-color:transparent;}
+  button.mini{padding:3px 8px;font-size:12px;border-radius:6px;white-space:nowrap;}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px 18px;margin-bottom:16px;
+  }
+  .card > h2{
+    margin:0 0 4px;font-size:15.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  }
+  .card > .desc{color:var(--text-3);font-size:12.5px;margin:0 0 14px;}
+  .pill{font-size:11px;font-weight:400;color:var(--text-3);border:1px solid var(--line-strong);
+    border-radius:20px;padding:1px 9px;letter-spacing:.2px;}
+
+  /* 指标卡 */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;margin-bottom:16px;}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;}
+  .kpi .k-label{font-size:12px;color:var(--text-3);}
+  .kpi .k-value{font-size:22px;font-weight:600;margin-top:5px;letter-spacing:.3px;font-variant-numeric:tabular-nums;}
+  .kpi .k-sub{font-size:11.5px;color:var(--text-3);margin-top:3px;}
+  .kpi.good .k-value{color:var(--accent);}
+  .kpi.bad .k-value{color:var(--berry);}
+  .kpi.info .k-value{color:var(--blue);}
+
+  table{width:100%;border-collapse:collapse;}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle;}
+  th{font-size:12px;color:var(--text-3);font-weight:600;white-space:nowrap;background:#fafbfc;}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
+  tbody tr:hover{background:#fafbfc;}
+  tfoot td{font-weight:600;border-bottom:none;background:#fafbfc;}
+
+  input[type=text],input[type=number],select{
+    font:inherit;color:inherit;width:100%;padding:5px 8px;
+    border:1px solid var(--line-strong);border-radius:7px;background:#fff;
+  }
+  input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  input[type=number]{text-align:right;font-variant-numeric:tabular-nums;}
+  input.price-in{border-color:#c9e5e1;background:#f7fdfc;font-weight:600;}
+  input[type=range]{width:100%;accent-color:var(--accent);}
+
+  .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:5px;background:#eef2f6;color:var(--text-2);}
+  .tag.fruit{background:var(--berry-soft);color:var(--berry);}
+  .tag.base{background:#e0edff;color:var(--blue);}
+  .tag.cereal{background:#fdf0d9;color:var(--warn);}
+  .tag.nut{background:#f3e9dd;color:#8a5a2b;}
+  .tag.jam{background:#f0e6f7;color:#7c3aed;}
+  .tag.other{background:#eef2f6;color:var(--text-2);}
+
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+  .toolbar .grow{flex:1;min-width:150px;}
+
+  /* 产品卡 */
+  .prod-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:14px;}
+  .prod{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;}
+  .prod .p-head{display:flex;align-items:center;gap:10px;padding:11px 13px;background:#fafbfc;border-bottom:1px solid var(--line);}
+  .prod .p-name{font-weight:600;flex:1;min-width:80px;border:1px solid transparent;background:transparent;padding:3px 6px;border-radius:6px;}
+  .prod .p-name:hover{border-color:var(--line-strong);}
+  .prod .p-body{padding:6px 13px 12px;}
+  .prod table th,.prod table td{padding:6px 6px;font-size:13px;}
+  .prod .add-row{padding:4px 0 0;}
+
+  .costline{display:flex;gap:4px;height:9px;border-radius:5px;overflow:hidden;background:#eef2f6;margin:8px 0 6px;}
+  .costline span{display:block;height:100%;}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:11.5px;color:var(--text-2);}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;}
+
+  .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:10px;}
+  .sum-item{background:#fafbfc;border:1px solid var(--line);border-radius:8px;padding:8px 10px;}
+  .sum-item .s-l{font-size:11.5px;color:var(--text-3);}
+  .sum-item .s-v{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px;}
+
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 18px;}
+  .field{margin-bottom:2px;}
+  .field label{display:block;font-size:12px;color:var(--text-2);margin-bottom:4px;}
+
+  .note{font-size:12px;color:var(--text-3);margin-top:10px;line-height:1.6;}
+  .hl{color:var(--berry);font-weight:600;}
+  .hl.ok{color:var(--accent);}
+
+  .log{max-height:180px;overflow:auto;font-size:12.5px;}
+  .log div{padding:5px 0;border-bottom:1px dashed var(--line);color:var(--text-2);}
+  .log .t{color:var(--text-3);margin-right:8px;font-variant-numeric:tabular-nums;}
+
+  .empty{color:var(--text-3);font-size:13px;padding:10px 0;}
+  .muted{color:var(--text-3);}
+  .right{text-align:right;}
+  .nowrap{white-space:nowrap;}
+
+  .simbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fafbfc;border:1px solid var(--line);
+    border-radius:9px;padding:10px 13px;margin-bottom:12px;}
+  .simbar .val{font-weight:600;color:var(--berry);min-width:52px;font-variant-numeric:tabular-nums;}
+
+  /* ---------- 模块切换 ---------- */
+  .appbar{
+    position:sticky;top:0;z-index:30;
+    margin:-20px -18px 16px;padding:12px 18px 0;
+    background:rgba(245,247,249,.96);
+    -webkit-backdrop-filter:saturate(180%) blur(10px);
+    backdrop-filter:saturate(180%) blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .ab-top{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;}
+  .ab-top h1{margin:0;font-size:16px;letter-spacing:.2px;white-space:nowrap;}
+  .vtag{
+    display:inline-block;vertical-align:middle;margin-left:8px;
+    font-size:10.5px;font-weight:600;letter-spacing:.4px;
+    color:var(--accent);background:rgba(13,148,136,.10);
+    border:1px solid rgba(13,148,136,.28);
+    padding:1px 6px;border-radius:20px;white-space:nowrap;
+  }
+  .ab-kpis{display:flex;gap:16px;}
+  .ab-kpi{font-size:11px;color:var(--text-3);line-height:1.35;}
+  .ab-kpi b{display:block;font-size:15px;color:var(--text);font-variant-numeric:tabular-nums;font-weight:600;margin-top:1px;}
+  .tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-top:8px;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{
+    flex:0 0 auto;border:none;background:transparent;border-radius:0;
+    padding:9px 13px;font-size:13.5px;color:var(--text-2);
+    border-bottom:2px solid transparent;white-space:nowrap;
+  }
+  .tab:hover{background:transparent;color:var(--accent);border-color:transparent;border-bottom-color:rgba(13,148,136,.35);}
+  .tab.active{color:var(--accent);font-weight:600;border-bottom-color:var(--accent);}
+
+  .card[data-view]{display:none;}
+  .card[data-view].active{display:block;}
+  .kpis[data-view]{display:none;}
+  .kpis[data-view].active{display:grid;}
+
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .ov-row{display:flex;justify-content:space-between;gap:14px;padding:9px 0;
+    border-bottom:1px dashed var(--line);font-size:13px;align-items:baseline;}
+  .ov-row:last-child{border-bottom:none;}
+  .ov-l{color:var(--text-3);flex:0 0 auto;}
+  .ov-v{font-weight:600;text-align:right;font-variant-numeric:tabular-nums;}
+
+  /* 移动端折叠按钮：桌面不显示 */
+  .ing-toggle{display:none;}
+  .ing-sub{display:none;}
+
+  /* ---------- 手机适配 ---------- */
+  @media (max-width:760px){
+    body{font-size:13.5px;}
+    .wrap{padding:14px 11px 60px;max-width:100%;}
+    .appbar{margin:-14px -11px 12px;padding:10px 11px 0;}
+    .ab-top h1{font-size:15px;}
+    .ab-kpis{gap:12px;}
+    .ab-kpi{font-size:10.5px;}
+    .ab-kpi b{font-size:14px;}
+    .tab{padding:9px 11px;font-size:13px;}
+    header.top{align-items:flex-start;}
+    header.top h1{font-size:18px;}
+    .top-actions{width:100%;}
+    .top-actions button{flex:1;min-width:0;padding:9px 6px;font-size:13px;}
+
+    .kpis{grid-template-columns:repeat(2,1fr);gap:9px;}
+    .kpi{padding:11px 12px;}
+    .kpi .k-value{font-size:18px;}
+    .kpi .k-sub{font-size:10.5px;}
+
+    .card{padding:13px 12px;border-radius:10px;}
+    .card > h2{font-size:14.5px;}
+
+    .prod-grid{grid-template-columns:1fr;}
+    .grid2{grid-template-columns:1fr;gap:10px;}
+    .summary{grid-template-columns:repeat(2,1fr);gap:8px;}
+
+    /* 表格横向滚动 + 触控友好 */
+    .scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;
+      margin:0 -12px;padding:0 12px;}
+    .scroll-x table{min-width:600px;}
+    .scroll-x.narrow table{min-width:0;}
+    th,td{padding:7px 8px;font-size:12.5px;white-space:nowrap;}
+    input[type=text],input[type=number],select{padding:8px 9px;font-size:14px;} /* ≥14px 防 iOS 自动缩放 */
+    input[type=number]{min-width:64px;}
+    td input[type=number]{min-width:70px;}
+
+    .prod .p-body{padding:6px 10px 10px;}
+    .prod table th,.prod table td{padding:6px 4px;}
+    .prod .add-row select,.prod .add-row input{font-size:14px;}
+    .costline{height:11px;}
+
+    .toolbar{gap:6px;}
+    .toolbar .grow{min-width:110px;}
+    .toolbar select{width:auto;}
+    .simbar{padding:9px 10px;gap:8px;}
+    .simbar input[type=range]{max-width:none;flex:1;min-width:120px;}
+    .simbar > .muted{flex:1 1 100%;font-size:11.5px;}
+    .simbar > label:first-child{flex:1 1 100%;}
+
+    .log{max-height:150px;}
+  }
+
+  /* 表格转卡片：窄屏不做左右拖动（620px 以下） */
+  @media (max-width:620px){
+    .scroll-x.cards{overflow:visible;margin:0;padding:0;}
+    .cards table,.cards tbody,.cards tr,.cards td{display:block;width:auto;}
+    .cards table{min-width:0 !important;width:100%;}
+    .cards thead{display:none;}
+    .cards tbody tr[data-id]{
+      display:grid;grid-template-columns:1fr 1fr;gap:9px 10px;
+      position:relative;
+      border:1px solid var(--line);border-radius:11px;
+      padding:11px 11px 10px;margin-bottom:10px;background:#fff;
+    }
+    .cards tbody tr[data-id]:last-child{margin-bottom:0;}
+    .cards td{
+      border:none !important;padding:0 !important;
+      white-space:normal !important;text-align:left !important;
+      font-size:13px;
+    }
+    .cards td::before{
+      content:attr(data-label);display:block;
+      font-size:10.5px;line-height:1.25;color:var(--text-3);
+      margin-bottom:3px;font-weight:500;letter-spacing:.2px;
+    }
+    .cards td[data-label=""]::before{display:none;}
+    .cards td input,.cards td select{width:100%;box-sizing:border-box;}
+    .cards td.c-num{font-variant-numeric:tabular-nums;font-weight:600;}
+    .cards .c-full{grid-column:1/-1;}
+    .cards td.c-name{padding-right:0 !important;}
+    .cards tbody td.c-full:empty{display:none;}
+    .cards tbody td.c-full{font-size:13.5px;font-weight:600;color:var(--text);}
+    /* ---------- 原料行：默认折叠成一行「名称 + 采购价」，点「编辑」展开 ---------- */
+    #ingTable tbody tr[data-id]{
+      grid-template-columns:1fr 84px auto;gap:0 9px;
+      padding:8px 10px;margin-bottom:6px;border-radius:10px;
+      align-items:center;
+    }
+    #ingTable td{border:none !important;padding:0 !important;white-space:normal !important;}
+    #ingTable td.c-name{grid-area:1/1/2/2;min-width:0;}
+    #ingTable td.c-name::before{display:none !important;}
+    #ingTable td.c-name .f-name{
+      border:1px solid transparent;background:transparent;
+      padding:0;font-size:14.5px;font-weight:600;line-height:1.35;color:var(--text);
+    }
+    #ingTable .ing-sub{
+      display:block;font-size:10.5px;line-height:1.3;color:var(--text-3);
+      margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    #ingTable td.c-price{grid-area:1/2/2/3;display:flex;align-items:center;gap:3px;}
+    #ingTable td.c-price::before{
+      content:"¥";display:block;margin:0 !important;padding:0 !important;
+      font-size:12px;line-height:1;color:var(--text-3);flex:0 0 auto;
+    }
+    #ingTable td.c-price .f-price{padding:5px 5px;font-size:14px;}
+    #ingTable td.c-uc,
+    #ingTable td.c-size,#ingTable td.c-unit,#ingTable td.c-cat,#ingTable td.c-note{display:none !important;}
+    #ingTable td.c-del{grid-area:1/3/2/4;justify-self:end;display:flex;gap:5px;flex-wrap:nowrap;}
+    #ingTable .ing-toggle{
+      display:inline-block;padding:5px 8px;font-size:12px;line-height:1.1;border-radius:6px;
+      border:1px solid var(--line) !important;color:var(--text-2) !important;background:#fff;
+    }
+    #ingTable .del{display:none;}
+
+    /* 展开态：变成两列表单 */
+    #ingTable tbody tr.open{grid-template-columns:1fr 1fr;gap:9px 10px;align-items:start;padding-bottom:10px;}
+    #ingTable tbody tr.open td.c-size,
+    #ingTable tbody tr.open td.c-unit,
+    #ingTable tbody tr.open td.c-cat,
+    #ingTable tbody tr.open td.c-note{display:block !important;}
+    #ingTable tbody tr.open .ing-sub{display:none;}
+    #ingTable tbody tr.open td.c-name{grid-area:1/1/2/3;}
+    #ingTable tbody tr.open td.c-name .f-name{border-color:var(--line);background:#fff;padding:4px 7px;}
+    #ingTable tbody tr.open td.c-price{grid-area:2/1/3/2;display:block;}
+    #ingTable tbody tr.open td.c-price::before{
+      content:"采购价 ¥";display:block;margin:0 0 3px !important;
+      font-size:10.5px;line-height:1.25;color:var(--text-3);letter-spacing:.2px;
+    }
+    #ingTable tbody tr.open td.c-uc{
+      display:block !important;grid-area:4/1/5/3;
+      font-size:11.5px;font-weight:400;color:var(--text-2);
+      background:#f2f9f4;border-radius:6px;padding:5px 8px !important;
+    }
+    #ingTable tbody tr.open td.c-uc::before{
+      content:attr(data-label) "：";display:inline;margin:0;font-size:11.5px;color:var(--text-3);
+    }
+    #ingTable tbody tr.open td.c-size{grid-area:2/2/3/3;}
+    #ingTable tbody tr.open td.c-unit{grid-area:3/1/4/2;}
+    #ingTable tbody tr.open td.c-cat{grid-area:3/2/4/3;}
+    #ingTable tbody tr.open td.c-note{grid-area:5/1/6/3;}
+    #ingTable tbody tr.open td.c-del{grid-area:6/1/7/3;}
+    #ingTable tbody tr.open .del{display:inline-block;}
+    #ingTable tbody tr.open{background:#fbfdfd;box-shadow:0 2px 10px rgba(13,148,136,.07);}
+    .cards tfoot tr{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;
+      border:none;padding:0;margin-top:2px;background:transparent;}
+    .cards tfoot td{border:none !important;padding:0 !important;text-align:left !important;}
+    .cards tfoot td::before{content:attr(data-label);display:block;font-size:10.5px;color:var(--text-3);margin-bottom:2px;}
+    .cards tfoot td:empty{display:none;}
+
+    /* 工具栏：搜索独占一行，筛选与按钮并排 */
+    .toolbar{gap:7px;}
+    .toolbar .grow{flex:1 1 100%;}
+    .toolbar select{flex:1 1 auto;min-width:0;}
+    .toolbar > button{flex:0 0 auto;white-space:nowrap;}
+
+    /* 说明文字压到两行，给列表让出空间 */
+    .card > .desc{
+      display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+      overflow:hidden;font-size:12px;line-height:1.45;margin-bottom:10px;
+    }
+
+    /* 配方表：窄屏隐藏「单价」列，一屏放得下 */
+    .prod .r-uc{display:none;}
+    .prod table th,.prod table td{padding:6px 3px;font-size:12.5px;}
+    .prod .r-amt{width:74px !important;}
+    .prod .r-unit{width:auto !important;}
+    .prod .r-del{width:36px !important;}
+    .prod table input[type=number]{min-width:0;width:100%;}
+    .prod .add-row{display:flex;gap:6px;flex-wrap:wrap;}
+    .prod .add-row .add-sel{flex:1 1 100%;min-width:0;width:auto !important;}
+    .prod .add-row .add-amt{width:auto !important;flex:1 1 auto;min-width:0;}
+    .prod .add-row .add-btn{flex:0 0 auto;white-space:nowrap;}
+  }
+  @media (max-width:400px){
+    .kpis{grid-template-columns:1fr;}
+  }
+
+  @media print{
+    body{background:#fff;}
+    .top-actions,.toolbar,.no-print,.tabs{display:none !important;}
+    .appbar{position:static;margin:0 0 10px;padding:0;background:#fff;border-bottom:none;
+      -webkit-backdrop-filter:none;backdrop-filter:none;}
+    [data-view]{display:block !important;}
+    .kpis[data-view]{display:grid !important;}
+    .card{break-inside:avoid;border-color:#ccc;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="appbar">
+    <div class="ab-top">
+      <h1>希腊酸奶 · 成本利润<span class="vtag" id="vtag">v2</span></h1>
+      <div class="ab-kpis" id="abKpis"></div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="overview">概览</button>
+      <button class="tab" data-tab="ing">原料</button>
+      <button class="tab" data-tab="recipe">配方</button>
+      <button class="tab" data-tab="price">售价</button>
+      <button class="tab" data-tab="biz">经营</button>
+      <button class="tab" data-tab="sim">模拟</button>
+      <button class="tab" data-tab="data">数据</button>
+    </nav>
+  </header>
+
+  <div class="kpis active" id="kpis" data-view="overview"></div>
+
+  <section class="card active" data-view="overview">
+    <h2>经营体检 <span class="pill">一眼看风险</span></h2>
+    <div id="overviewNote"></div>
+  </section>
+
+  <!-- 原料库 -->
+  <section class="card" data-view="ing">
+    <h2>① 原料库 <span class="pill">改价格即全局生效</span></h2>
+    <p class="desc">采购价按「规格 + 单价」录入，系统自动换算单位成本（¥/g）。水果等波动品采购价变动时，直接改「采购价」即可。</p>
+    <div class="toolbar">
+      <input type="text" id="ingSearch" class="grow" placeholder="搜索原料名称…（例如：蓝莓）">
+      <select id="ingFilter" style="width:auto">
+        <option value="">全部分类</option>
+        <option value="base">酸奶基底</option>
+        <option value="cereal">麦片谷物</option>
+        <option value="nut">坚果种子</option>
+        <option value="jam">果酱酱料</option>
+        <option value="fruit">新鲜水果</option>
+        <option value="other">其他配料</option>
+      </select>
+      <button id="btnAddIng" class="primary">+ 新增原料</button>
+    </div>
+    <div class="scroll-x cards">
+      <table id="ingTable">
+        <thead>
+          <tr>
+            <th style="min-width:150px">原料名称</th>
+            <th>分类</th>
+            <th class="num" style="width:96px">采购规格</th>
+            <th style="width:78px">单位</th>
+            <th class="num" style="width:110px">采购价 ¥</th>
+            <th class="num" style="width:110px">单位成本</th>
+            <th style="min-width:120px">备注</th>
+            <th style="width:60px"></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="note">单位成本 = 采购价 ÷ 规格数量。酸奶、牛奶等液体可用 ml（1ml ≈ 1g）。</div>
+  </section>
+
+  <!-- 配方 -->
+  <section class="card" data-view="recipe">
+    <h2>② 配方与单碗成本 <span class="pill">按产品配置用量</span></h2>
+    <p class="desc">每款酸奶碗用多少克原料，成本明细与成本构成图会随原料价实时变化。</p>
+    <div class="prod-grid" id="prodGrid"></div>
+    <div class="toolbar" style="margin-top:14px;margin-bottom:0">
+      <button id="btnAddProd">+ 新增产品</button>
+    </div>
+  </section>
+
+  <!-- 售价 -->
+  <section class="card" data-view="price">
+    <h2>③ 售价与单碗毛利</h2>
+    <p class="desc">售价、日销量可随时调整；包装成本和平台抽佣在这里计入毛利。</p>
+    <div class="scroll-x cards">
+      <table id="priceTable">
+        <thead>
+          <tr>
+            <th style="min-width:140px">产品</th>
+            <th class="num">原料成本</th>
+            <th class="num" style="width:100px">售价 ¥</th>
+            <th class="num">平台抽佣</th>
+            <th class="num">单碗毛利</th>
+            <th class="num">毛利率</th>
+            <th class="num">加价倍率</th>
+            <th class="num" style="width:110px">日销量(碗)</th>
+            <th class="num">日毛利</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <!-- 经营测算 -->
+  <section class="card" data-view="biz">
+    <h2>④ 固定成本与月度经营测算</h2>
+    <p class="desc">填你的固定开支，自动算月度净利和「每天要卖多少碗才不亏」。</p>
+    <div class="grid2" style="margin-bottom:14px">
+      <div class="field"><label>房租 / 月（¥）</label><input type="number" id="fRent" step="1"></div>
+      <div class="field"><label>人工 / 月（¥）</label><input type="number" id="fLabor" step="1"></div>
+      <div class="field"><label>水电物业 / 月（¥）</label><input type="number" id="fUtil" step="1"></div>
+      <div class="field"><label>其他开支 / 月（¥，营销/耗材等）</label><input type="number" id="fOther" step="1"></div>
+      <div class="field"><label>单碗包装成本（¥，碗+盖+勺）</label><input type="number" id="fPack" step="0.01"></div>
+      <div class="field"><label>平台抽佣比例（%，外卖/团购）</label><input type="number" id="fRate" step="0.5"></div>
+      <div class="field"><label>月营业天数</label><input type="number" id="fDays" step="1"></div>
+      <div class="field"><label>目标月净利（¥，用于反推销量）</label><input type="number" id="fTarget" step="100"></div>
+    </div>
+    <div class="summary" id="bizSummary"></div>
+    <div class="note" id="beNote"></div>
+  </section>
+
+  <!-- 敏感度 -->
+  <section class="card" data-view="sim">
+    <h2>⑤ 价格波动模拟 <span class="pill">水果涨价怎么办</span></h2>
+    <p class="desc">给原料设置涨/跌幅，看看对单碗成本和月度净利的影响。这是纯模拟，不会改动你的实际采购价。</p>
+    <div class="simbar">
+      <label class="nowrap" style="font-size:13px">全部原料统一变动</label>
+      <input type="range" id="globalSim" min="-50" max="100" step="1" value="0" style="max-width:260px">
+      <span class="val" id="globalSimVal">0%</span>
+      <button id="btnSimClear" class="mini">清零</button>
+      <span class="muted" style="font-size:12px">也可在下表单独调某一项（如草莓 +20%）</span>
+    </div>
+    <div class="scroll-x cards">
+      <table id="simTable">
+        <thead>
+          <tr>
+            <th style="min-width:140px">原料</th>
+            <th class="num">当前单位成本</th>
+            <th class="num">月总用量</th>
+            <th class="num">月原料成本</th>
+            <th class="num">占原料成本</th>
+            <th class="num" style="width:110px">模拟涨跌 %</th>
+            <th class="num">模拟后月成本</th>
+            <th class="num">月净利影响</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+    <div class="summary" id="simSummary" style="margin-top:12px"></div>
+  </section>
+
+  <!-- 调价记录 -->
+  <section class="card" data-view="data">
+    <h2>⑥ 调价记录</h2>
+    <p class="desc">每次修改采购价会自动留痕，方便回头核对是哪些原料在推高成本。</p>
+    <div class="log" id="logBox"></div>
+  </section>
+
+  <section class="card" data-view="data">
+    <h2>⑦ 数据与备份</h2>
+    <p class="desc">数据存在当前设备的浏览器里，换设备请先「导出数据」备份，再在新设备「导入数据」。</p>
+    <div class="btn-row">
+      <button id="btnExport">导出数据</button>
+      <button id="btnImport">导入数据</button>
+      <button id="btnPrint">打印 / 存 PDF</button>
+      <button id="btnReset" class="ghost">恢复示例</button>
+    </div>
+    <input type="file" id="fileInput" accept="application/json,.json" style="display:none">
+    <div class="note">
+      <b>添加到手机主屏幕：</b>安卓 Chrome 打开页面后，点右上角「⋮」→「添加到主屏幕」，桌面就会多一个图标，点开即用。<br>
+      提示：本地文件打开的页面，部分浏览器会把它加为「书签快捷方式」而不是独立 App 窗口，功能完全一样。
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORE_KEY = "yogurt-calc-v1";
+  var BUILD = "v4 · 1410";
+  var CATS = {
+    base:{name:"酸奶基底",cls:"base"},
+    cereal:{name:"麦片谷物",cls:"cereal"},
+    nut:{name:"坚果种子",cls:"nut"},
+    jam:{name:"果酱酱料",cls:"jam"},
+    fruit:{name:"新鲜水果",cls:"fruit"},
+    other:{name:"其他配料",cls:"other"}
+  };
+  var COLORS = ["#0d9488","#2563eb","#e11d48","#f59e0b","#7c3aed","#0891b2","#65a30d","#db2777","#ea580c","#4f46e5","#059669","#a16207"];
+
+  var state = null;
+  var ingOpen = {};   // 窄屏下哪些原料行处于展开态（仅界面状态，不写盘）
+
+  function uid(p){ return (p||"id") + "_" + Math.random().toString(36).slice(2,9); }
+
+  function defaults(){
+    function I(name,cat,size,unit,price,note){ return {id:uid("i"),name:name,cat:cat,size:size,unit:unit,price:price,note:note||""}; }
+    var ings = [
+      I("希腊酸奶（自制滤乳清）","base",1000,"g",34,"10L 牛奶约出 3kg 酸奶，按成品量摊销"),
+      I("厚椰乳/稀奶油","base",1000,"ml",22,""),
+      I("烘焙燕麦麦片","cereal",1000,"g",32,""),
+      I("玉米片/脆谷物","cereal",500,"g",14,""),
+      I("混合坚果（巴旦木核桃）","nut",500,"g",68,""),
+      I("开心果碎","nut",250,"g",45,""),
+      I("奇亚籽","nut",500,"g",38,""),
+      I("椰蓉","other",200,"g",16,""),
+      I("草莓果酱","jam",1000,"g",42,""),
+      I("蓝莓果酱","jam",1000,"g",55,""),
+      I("蜂蜜","jam",500,"g",45,""),
+      I("巧克力酱","jam",500,"g",36,""),
+      I("蓝莓","fruit",125,"g",18,"价格随季节波动大"),
+      I("草莓","fruit",500,"g",26,"冬季涨幅明显"),
+      I("香蕉","fruit",1000,"g",12,""),
+      I("芒果","fruit",1000,"g",22,""),
+      I("奇异果","fruit",1000,"g",30,""),
+      I("树莓/覆盆子","fruit",125,"g",25,"高价易损"),
+      I("无花果","fruit",500,"g",36,"")
+    ];
+    function P(name,price,daily,recipe){ return {id:uid("p"),name:name,price:price,daily:daily,recipe:recipe}; }
+    function R(idx,amount){ return {ingId:ings[idx].id, amount:amount}; }
+    return {
+      ingredients: ings,
+      products: [
+        P("经典希腊酸奶碗",32,25,[R(0,180),R(2,30),R(4,15),R(10,10),R(12,20),R(13,30)]),
+        P("莓果盈盈碗",38,18,[R(0,180),R(2,25),R(4,12),R(8,15),R(12,40),R(13,40)]),
+        P("热带芒果碗",36,15,[R(0,180),R(2,30),R(15,60),R(14,30),R(7,8)]),
+        P("坚果能量碗",42,12,[R(0,200),R(2,30),R(4,35),R(6,8),R(10,12),R(14,25)])
+      ],
+      fixed:{rent:8000,labor:12000,util:1500,other:1000,pack:1.2,rate:18,days:30,target:20000},
+      sim:{},
+      log:[]
+    };
+  }
+
+  /* ---------- 计算核心 ---------- */
+  function unitCost(ing){ return ing.size>0 ? ing.price/ing.size : 0; }
+  function ingById(id){ for(var i=0;i<state.ingredients.length;i++){ if(state.ingredients[i].id===id) return state.ingredients[i]; } return null; }
+  // 折叠行的副标题：分类 · 规格 · 单位成本
+  function ingSub(ing){
+    var uc = unitCost(ing);
+    return (CATS[ing.cat]||CATS.other).name + ' · ' + num(ing.size,0) + ' ' + ing.unit
+      + ' · ¥' + (uc<1?num(uc,4):num(uc,2)) + '/' + ing.unit;
+  }
+
+  // factor: 模拟系数（默认 1）
+  function recipeCost(product, factorMap){
+    var total=0, rows=[];
+    for(var i=0;i<product.recipe.length;i++){
+      var r=product.recipe[i], ing=ingById(r.ingId);
+      if(!ing) continue;
+      var f = (factorMap && factorMap[r.ingId]!=null) ? factorMap[r.ingId] : 1;
+      var c = r.amount * unitCost(ing) * f;
+      total += c;
+      rows.push({ing:ing, amount:r.amount, cost:c});
+    }
+    return {total:total, rows:rows};
+  }
+
+  function priceOf(product){ return product.price||0; }
+  function commission(p){ return priceOf(p) * (state.fixed.rate||0)/100; }
+  function unitProfit(p, factorMap){ return priceOf(p) - recipeCost(p,factorMap).total - (state.fixed.pack||0) - commission(p); }
+  function margin(p, factorMap){ var pr=priceOf(p); return pr>0 ? unitProfit(p,factorMap)/pr : 0; }
+
+  function monthVolume(p){ return (p.daily||0) * (state.fixed.days||0); }
+
+  function totals(factorMap){
+    var matCost=0, revenue=0, gross=0, vol=0;
+    for(var i=0;i<state.products.length;i++){
+      var p=state.products[i], v=monthVolume(p);
+      var rc=recipeCost(p,factorMap).total;
+      matCost += (rc + (state.fixed.pack||0)) * v;
+      revenue += priceOf(p)*v;
+      gross += unitProfit(p,factorMap)*v;
+      vol += v;
+    }
+    var fixedM = (state.fixed.rent||0)+(state.fixed.labor||0)+(state.fixed.util||0)+(state.fixed.other||0);
+    return {
+      matCost:matCost, revenue:revenue, gross:gross, vol:vol,
+      fixedM:fixedM, net:gross-fixedM,
+      avgMargin: revenue>0 ? gross/revenue : 0,
+      avgUnitProfit: vol>0 ? gross/vol : 0,
+      avgMatCost: vol>0 ? matCost/vol : 0
+    };
+  }
+
+  function monthlyUsage(){
+    var map={};
+    for(var i=0;i<state.products.length;i++){
+      var p=state.products[i], v=monthVolume(p);
+      for(var j=0;j<p.recipe.length;j++){
+        var r=p.recipe[j];
+        if(!map[r.ingId]) map[r.ingId]=0;
+        map[r.ingId] += r.amount * v;
+      }
+    }
+    return map;
+  }
+
+  /* ---------- 格式化 ---------- */
+  function money(n){
+    var v = Math.round(n*100)/100;
+    var neg = v < 0; v = Math.abs(v);
+    var p = v.toFixed(2).split(".");
+    return "¥" + (neg?"-":"") + p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "." + p[1];
+  }
+  function money0(n){ return "¥" + Math.round(n).toLocaleString("zh-CN"); }
+  function num(n,d){ d = (d==null?2:d); return (Math.round(n*Math.pow(10,d))/Math.pow(10,d)).toFixed(d); }
+  function pct(n,d){ d=(d==null?1:d); return (n*100).toFixed(d)+"%"; }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+
+  /* ---------- 持久化 ---------- */
+  function save(){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+  }
+  function load(){
+    try{
+      var raw = localStorage.getItem(STORE_KEY);
+      if(raw){
+        var s = JSON.parse(raw);
+        if(s && s.ingredients && s.products){ 
+          s.fixed = Object.assign(defaults().fixed, s.fixed||{});
+          s.sim = s.sim||{}; s.log = s.log||[];
+          return s;
+        }
+      }
+    }catch(e){}
+    return defaults();
+  }
+
+  function pushLog(name, oldV, newV){
+    var d=new Date();
+    var t = (d.getMonth()+1)+"/"+d.getDate()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+    state.log.unshift({t:t, name:name, old:oldV, nw:newV});
+    if(state.log.length>60) state.log.length=60;
+  }
+
+  /* ---------- 渲染：KPI ---------- */
+  function renderKpis(){
+    var t=totals();
+    var el=document.getElementById("kpis");
+    var items = [
+      {label:"平均单碗原料成本", value:money(t.avgMatCost), sub:"含包装成本", cls:""},
+      {label:"加权平均毛利率", value:pct(t.avgMargin), sub:"扣原料+包装+抽佣", cls: t.avgMargin>0.55?"good":"bad"},
+      {label:"月营业额", value:money0(t.revenue), sub:"按当前日销量 × "+state.fixed.days+"天", cls:"info"},
+      {label:"月毛利", value:money0(t.gross), sub:"单碗均 "+money(t.avgUnitProfit), cls: t.gross>0?"good":"bad"},
+      {label:"月净利", value:money0(t.net), sub:"已扣固定成本 "+money0(t.fixedM), cls: t.net>0?"good":"bad"},
+      {label:"月销量", value:Math.round(t.vol).toLocaleString("zh-CN")+" 碗", sub:"日均 "+num(t.vol/(state.fixed.days||1),1)+" 碗", cls:""}
+    ];
+    el.innerHTML = items.map(function(i){
+      return '<div class="kpi '+i.cls+'"><div class="k-label">'+i.label+'</div><div class="k-value">'+i.value+'</div><div class="k-sub">'+i.sub+'</div></div>';
+    }).join("");
+  }
+
+  /* ---------- 渲染：顶栏摘要 + 概览体检 ---------- */
+  function renderAbKpis(){
+    var t = totals();
+    var el = document.getElementById("abKpis");
+    if(!el) return;
+    el.innerHTML =
+        '<div class="ab-kpi">单碗成本<b>' + money(t.avgMatCost) + '</b></div>'
+      + '<div class="ab-kpi">毛利率<b>' + pct(t.avgMargin) + '</b></div>'
+      + '<div class="ab-kpi">月净利<b style="color:' + (t.net>=0 ? 'var(--accent)' : 'var(--berry)') + '">' + money0(t.net) + '</b></div>';
+  }
+
+  function renderOverviewNote(){
+    var box = document.getElementById("overviewNote");
+    if(!box) return;
+    var t = totals();
+    var days = state.fixed.days || 1;
+    var be = t.avgUnitProfit > 0 ? t.fixedM / (t.avgUnitProfit * days) : 0;
+    var cur = t.vol / days;
+
+    // 成本大头
+    var usage = monthlyUsage();
+    var arr = [];
+    for(var i=0;i<state.ingredients.length;i++){
+      var ing = state.ingredients[i];
+      var c = (usage[ing.id]||0) * unitCost(ing);
+      if(c>0) arr.push({name:ing.name, c:c});
+    }
+    arr.sort(function(a,b){ return b.c-a.c; });
+    var top = arr.slice(0,3);
+
+    // 毛利最低的产品
+    var worst = null;
+    for(var j=0;j<state.products.length;j++){
+      var p = state.products[j];
+      if(priceOf(p)<=0) continue;
+      var m = margin(p);
+      if(!worst || m < worst.m) worst = {p:p, m:m};
+    }
+
+    var statusLine = (t.avgUnitProfit<=0)
+      ? '<span class="hl">单碗毛利为负，先提价或降成本</span>'
+      : (cur < be
+          ? '<span class="hl">日均差 '+num(be-cur,1)+' 碗才保本</span>'
+          : '<span class="hl ok">已超过保本线 '+pct((cur-be)/(cur||1))+'</span>');
+
+    var rows = [
+      ['盈亏平衡日销量', num(be,1)+' 碗/天（当前 '+num(cur,1)+' 碗）'],
+      ['经营状态', statusLine],
+      ['成本最高的原料', top.length ? top.map(function(x){ return esc(x.name)+' '+money0(x.c); }).join(' · ') : '—'],
+      ['最该关注的产品', worst ? esc(worst.p.name)+' 毛利率 '+pct(worst.m) : '—'],
+      ['单碗平均毛利', money(t.avgUnitProfit)],
+      ['月营业额 / 月净利', money0(t.revenue)+' / '+money0(t.net)]
+    ];
+    box.innerHTML = rows.map(function(r){
+      return '<div class="ov-row"><span class="ov-l">'+r[0]+'</span><span class="ov-v">'+r[1]+'</span></div>';
+    }).join('');
+  }
+
+  /* ---------- 渲染：原料库 ---------- */
+  function renderIngredients(){
+    var kw = (document.getElementById("ingSearch").value||"").trim().toLowerCase();
+    var cat = document.getElementById("ingFilter").value;
+    var tb = document.querySelector("#ingTable tbody");
+    var list = state.ingredients.filter(function(i){
+      if(cat && i.cat!==cat) return false;
+      if(kw && i.name.toLowerCase().indexOf(kw)<0) return false;
+      return true;
+    });
+    if(!list.length){ tb.innerHTML = '<tr><td colspan="8" class="empty">没有匹配的原料</td></tr>'; return; }
+    tb.innerHTML = list.map(function(ing){
+      var uc = unitCost(ing);
+      var open = !!ingOpen[ing.id];
+      return '<tr data-id="'+ing.id+'"'+(open?' class="open"':'')+'>'
+        + '<td class="c-name c-full" data-label="原料名称"><input type="text" class="f-name" value="'+esc(ing.name)+'"><span class="ing-sub" data-sub="'+ing.id+'">'+esc(ingSub(ing))+'</span></td>'
+        + '<td class="c-cat c-full" data-label="分类"><select class="f-cat">'+ Object.keys(CATS).map(function(k){ return '<option value="'+k+'"'+(k===ing.cat?" selected":"")+'>'+CATS[k].name+'</option>'; }).join("") +'</select></td>'
+        + '<td class="c-size c-num" data-label="采购规格"><input type="number" class="f-size" step="any" min="0" value="'+ing.size+'"></td>'
+        + '<td class="c-unit" data-label="单位"><select class="f-unit"><option value="g"'+(ing.unit==="g"?" selected":"")+'>g</option><option value="ml"'+(ing.unit==="ml"?" selected":"")+'>ml</option><option value="个"'+(ing.unit==="个"?" selected":"")+'>个/份</option></select></td>'
+        + '<td class="c-price c-num" data-label="采购价 ¥"><input type="number" class="f-price price-in" step="0.01" min="0" value="'+ing.price+'"></td>'
+        + '<td class="c-uc c-num muted" data-label="单位成本" data-uc="'+ing.id+'">'+ (uc<1?num(uc,4):num(uc,2)) +' /'+ing.unit+'</td>'
+        + '<td class="c-note c-full" data-label="备注"><input type="text" class="f-note" value="'+esc(ing.note)+'" placeholder="可选，如供应商 / 到货日期"></td>'
+        + '<td class="c-del" data-label=""><button class="mini ghost ing-toggle" data-id="'+ing.id+'" aria-expanded="'+(open?"true":"false")+'">'+(open?"收起":"编辑")+'</button><button class="mini ghost del" data-id="'+ing.id+'">删除</button></td>'
+        + '</tr>';
+    }).join("");
+  }
+
+  /* ---------- 渲染：产品配方 ---------- */
+  function renderProducts(){
+    var grid = document.getElementById("prodGrid");
+    if(!state.products.length){ grid.innerHTML='<div class="empty">还没有产品，点下方「新增产品」</div>'; return; }
+    grid.innerHTML = state.products.map(function(p){
+      var rc = recipeCost(p);
+      var rows = rc.rows.slice().sort(function(a,b){ return b.cost-a.cost; });
+      var maxc = rows.length? rows[0].cost : 1;
+      var bars = rows.map(function(r,i){
+        var color = COLORS[state.ingredients.indexOf(r.ing) % COLORS.length];
+        var w = maxc>0 ? Math.max(2, r.cost/maxc*100) : 0;
+        return '<span style="width:'+w+'%;background:'+color+'" title="'+esc(r.ing.name)+'"></span>';
+      }).join("");
+      var legend = rows.map(function(r){
+        var color = COLORS[state.ingredients.indexOf(r.ing) % COLORS.length];
+        return '<span><i style="background:'+color+'"></i>'+esc(r.ing.name)+' '+money(r.cost)+'</span>';
+      }).join("");
+
+      var recipeRows = p.recipe.map(function(r){
+        var ing = ingById(r.ingId); if(!ing) return "";
+        return '<tr data-rid="'+r.id+'" data-ing="'+r.ingId+'">'
+          + '<td class="r-name">'+esc(ing.name)+'</td>'
+          + '<td class="num r-amt" style="width:92px"><input type="number" class="r-amount" step="any" min="0" value="'+r.amount+'"></td>'
+          + '<td class="num r-unit" style="width:60px">'+(ing.unit||"g")+'</td>'
+          + '<td class="num muted r-uc" data-uc="'+r.ingId+'">'+num(unitCost(ing), unitCost(ing)<1?4:2)+'</td>'
+          + '<td class="num r-cost" data-cost="'+r.id+'">'+money(r.amount*unitCost(ing))+'</td>'
+          + '<td class="right r-del" style="width:44px"><button class="mini ghost del-r">×</button></td>'
+          + '</tr>';
+      }).join("");
+
+      var opts = state.ingredients.map(function(i){ return '<option value="'+i.id+'">'+esc(i.name)+'</option>'; }).join("");
+
+      return '<div class="prod" data-id="'+p.id+'">'
+        + '<div class="p-head">'
+        +   '<input type="text" class="p-name" value="'+esc(p.name)+'">'
+        +   '<button class="mini ghost del-p">删除产品</button>'
+        + '</div>'
+        + '<div class="p-body">'
+        +   '<div class="scroll-x narrow"><table><thead><tr><th>原料</th><th class="num">用量</th><th></th><th class="num r-uc">单价</th><th class="num">成本</th><th></th></tr></thead>'
+        +   '<tbody>'+recipeRows+'</tbody>'
+        +   '<tfoot><tr><td colspan="4">单碗原料成本</td><td class="num" data-total="'+p.id+'">'+money(rc.total)+'</td><td></td></tr></tfoot></table></div>'
+        +   '<div class="add-row">'
+        +     '<select class="add-sel" style="width:auto;display:inline-block;vertical-align:middle">'+opts+'</select> '
+        +     '<input type="number" class="add-amt" step="any" min="0" placeholder="用量(g)" style="width:90px;display:inline-block;vertical-align:middle"> '
+        +     '<button class="mini add-btn">+ 加入配方</button>'
+        +   '</div>'
+        +   '<div class="costline">'+bars+'</div>'
+        +   '<div class="legend">'+legend+'</div>'
+        +   '<div class="summary">'
+        +     '<div class="sum-item"><div class="s-l">原料成本</div><div class="s-v" data-total2="'+p.id+'">'+money(rc.total)+'</div></div>'
+        +     '<div class="sum-item"><div class="s-l">+包装+抽佣</div><div class="s-v" data-full="'+p.id+'">'+money(rc.total+(state.fixed.pack||0)+commission(p))+'</div></div>'
+        +     '<div class="sum-item"><div class="s-l">售价</div><div class="s-v">'+money(p.price)+'</div></div>'
+        +     '<div class="sum-item"><div class="s-l">单碗毛利</div><div class="s-v" data-profit="'+p.id+'">'+money(unitProfit(p))+'</div></div>'
+        +     '<div class="sum-item"><div class="s-l">毛利率</div><div class="s-v" data-margin="'+p.id+'">'+pct(margin(p))+'</div></div>'
+        +   '</div>'
+        + '</div></div>';
+    }).join("");
+  }
+
+  /* ---------- 渲染：售价表 ---------- */
+  function renderPrice(){
+    var tb = document.querySelector("#priceTable tbody");
+    var tf = document.querySelector("#priceTable tfoot");
+    if(!state.products.length){ tb.innerHTML='<tr><td colspan="9" class="empty">暂无产品</td></tr>'; tf.innerHTML=""; return; }
+    tb.innerHTML = state.products.map(function(p){
+      var rc = recipeCost(p).total;
+      var pr = unitProfit(p);
+      return '<tr data-id="'+p.id+'">'
+        + '<td class="c-full" data-label="">'+esc(p.name)+'</td>'
+        + '<td class="num" data-label="原料成本">'+money(rc)+'</td>'
+        + '<td class="num" data-label="售价 ¥"><input type="number" class="p-price" step="0.5" min="0" value="'+p.price+'"></td>'
+        + '<td class="num muted" data-label="平台抽佣">'+money(commission(p))+'</td>'
+        + '<td class="num" data-label="单碗毛利" data-profit2="'+p.id+'">'+money(pr)+'</td>'
+        + '<td class="num" data-label="毛利率" data-margin2="'+p.id+'">'+pct(margin(p))+'</td>'
+        + '<td class="num muted" data-label="加价倍率">'+(rc>0?num(p.price/rc,2):"—")+'×</td>'
+        + '<td class="num" data-label="日销量（碗）"><input type="number" class="p-daily" step="1" min="0" value="'+p.daily+'"></td>'
+        + '<td class="num" data-label="日毛利">'+money(pr*p.daily)+'</td>'
+        + '</tr>';
+    }).join("");
+    var t=totals();
+    tf.innerHTML = '<tr><td class="c-full" data-label="合计 / 加权平均">合计 / 加权</td>'
+      + '<td class="num" data-label="原料成本">'+money(t.avgMatCost)+'</td><td data-label=""></td><td data-label=""></td>'
+      + '<td class="num" data-label="单碗毛利">'+money(t.avgUnitProfit)+'</td>'
+      + '<td class="num" data-label="毛利率">'+pct(t.avgMargin)+'</td><td data-label=""></td>'
+      + '<td class="num" data-label="日销量（碗）">'+num(t.vol/(state.fixed.days||1),1)+'</td>'
+      + '<td class="num" data-label="日毛利">'+money(t.gross/(state.fixed.days||1))+'</td></tr>';
+  }
+
+  /* ---------- 渲染：经营测算 ---------- */
+  function renderBiz(){
+    var t=totals();
+    var days = state.fixed.days||1;
+    var avgUnit = t.avgUnitProfit;
+    var beDaily = avgUnit>0 ? t.fixedM/(avgUnit*days) : 0;
+    var targetDaily = avgUnit>0 ? (t.fixedM + (state.fixed.target||0))/(avgUnit*days) : 0;
+    var curDaily = t.vol/days;
+    var items = [
+      {l:"月固定成本", v:money0(t.fixedM)},
+      {l:"月毛利", v:money0(t.gross)},
+      {l:"月净利", v:money0(t.net)},
+      {l:"净利润率", v: t.revenue>0? pct(t.net/t.revenue) : "—"},
+      {l:"盈亏平衡日销量", v: num(beDaily,1)+" 碗/天"},
+      {l:"目标净利所需日销量", v: num(targetDaily,1)+" 碗/天"}
+    ];
+    document.getElementById("bizSummary").innerHTML = items.map(function(i){
+      return '<div class="sum-item"><div class="s-l">'+i.l+'</div><div class="s-v">'+i.v+'</div></div>';
+    }).join("");
+
+    var note;
+    if(avgUnit<=0){
+      note = '当前平均单碗毛利 ≤ 0，说明售价低于成本，先调售价或降原料成本。';
+    }else if(curDaily < beDaily){
+      note = '当前日均 <span class="hl">'+num(curDaily,1)+'</span> 碗，低于盈亏平衡线 <span class="hl">'+num(beDaily,1)+'</span> 碗/天 —— 每月约亏 <span class="hl">'+money0(Math.abs(t.net))+'</span>。要么提销量、提价，要么压原料/固定成本。';
+    }else{
+      note = '当前日均 <span class="hl ok">'+num(curDaily,1)+'</span> 碗，高于盈亏平衡线 '+num(beDaily,1)+' 碗/天，安全边际 <span class="hl ok">'+pct((curDaily-beDaily)/(curDaily||1))+'</span>。';
+    }
+    document.getElementById("beNote").innerHTML = note;
+  }
+
+  /* ---------- 渲染：敏感度 ---------- */
+  function simFactors(){
+    var f={};
+    for(var k in state.sim){ if(state.sim.hasOwnProperty(k)) f[k] = 1 + state.sim[k]/100; }
+    return f;
+  }
+  function renderSim(){
+    var usage = monthlyUsage();
+    var f = simFactors();
+    var base = totals();
+    var sim = totals(f);
+    var tb = document.querySelector("#simTable tbody");
+    var tf = document.querySelector("#simTable tfoot");
+
+    var rows = state.ingredients.map(function(ing){
+      var u = usage[ing.id]||0;
+      var uc = unitCost(ing);
+      var mc = u*uc;
+      var share = base.matCost>0? mc/base.matCost : 0;
+      var factor = f[ing.id]!=null? f[ing.id] : 1;
+      var newMc = mc*factor;
+      var delta = -(newMc - mc); // 对净利的影响（成本上升则净利下降）
+      return {ing:ing, u:u, uc:uc, mc:mc, share:share, factor:factor, newMc:newMc, delta:delta};
+    });
+    rows.sort(function(a,b){ return b.mc - a.mc; });
+
+    tb.innerHTML = rows.map(function(r){
+      var s = state.sim[r.ing.id]||0;
+      return '<tr data-id="'+r.ing.id+'">'
+        + '<td class="c-full" data-label="">'+esc(r.ing.name)+'</td>'
+        + '<td class="num muted" data-label="当前单位成本">'+num(r.uc, r.uc<1?4:2)+' /'+r.ing.unit+'</td>'
+        + '<td class="num muted" data-label="月总用量">'+num(r.u,0)+' '+r.ing.unit+'</td>'
+        + '<td class="num" data-label="月原料成本">'+money(r.mc)+'</td>'
+        + '<td class="num" data-label="占原料成本">'+pct(r.share)+'</td>'
+        + '<td class="num" data-label="模拟涨跌 %"><input type="number" class="s-sim" step="1" value="'+s+'"></td>'
+        + '<td class="num" data-label="模拟后月成本">'+(r.factor!==1? money(r.newMc) : '<span class="muted">'+money(r.newMc)+'</span>')+'</td>'
+        + '<td class="num" data-label="月净利影响" style="color:'+(r.delta<0?"var(--berry)":(r.delta>0?"var(--accent)":"var(--text-3)"))+'">'+(r.delta===0?"—":(r.delta>0?"+":"")+money(r.delta))+'</td>'
+        + '</tr>';
+    }).join("");
+
+    tf.innerHTML = '<tr><td class="c-full" data-label="全部原料合计">合计</td><td data-label=""></td><td data-label=""></td><td class="num" data-label="月原料成本">'+money(base.matCost)+'</td><td class="num" data-label="占原料成本">100.0%</td><td data-label=""></td>'
+      + '<td class="num" data-label="模拟后月成本">'+money(sim.matCost)+'</td><td class="num" data-label="月净利影响">'+money(sim.net-base.net)+'</td></tr>';
+
+    var items = [
+      {l:"当前月净利", v:money0(base.net)},
+      {l:"模拟后月净利", v:money0(sim.net)},
+      {l:"净利变化", v:(sim.net-base.net>=0?"+":"")+money0(sim.net-base.net)},
+      {l:"当前毛利率", v:pct(base.avgMargin)},
+      {l:"模拟后毛利率", v:pct(sim.avgMargin)}
+    ];
+    document.getElementById("simSummary").innerHTML = items.map(function(i){
+      var cls = (i.l.indexOf("净利")>=0 && i.v.indexOf("-")>=0)? ' style="color:var(--berry)"':'';
+      return '<div class="sum-item"><div class="s-l">'+i.l+'</div><div class="s-v"'+cls+'>'+i.v+'</div></div>';
+    }).join("");
+  }
+
+  function renderLog(){
+    var box=document.getElementById("logBox");
+    if(!state.log.length){ box.innerHTML='<div class="muted">还没有调价记录。修改原料采购价后会自动记录在这里。</div>'; return; }
+    box.innerHTML = state.log.map(function(l){
+      return '<div><span class="t">'+l.t+'</span>'+esc(l.name)+'：'+money(l.old)+' → <b>'+money(l.nw)+'</b>'
+        + ' <span class="muted">('+(l.nw>=l.old?"+":"")+pct(l.old>0?(l.nw-l.old)/l.old:0)+')</span></div>';
+    }).join("");
+  }
+
+  /* ---------- 局部刷新（不重建输入框） ---------- */
+  function refresh(){
+    renderKpis();
+    renderAbKpis();
+    renderOverviewNote();
+    // 配方卡内的派生数值
+    state.products.forEach(function(p){
+      var rc = recipeCost(p);
+      p.recipe.forEach(function(r){
+        var ing = ingById(r.ingId); if(!ing) return;
+        var cell = document.querySelector('#prodGrid [data-cost="'+r.id+'"]');
+        if(cell) cell.textContent = money(r.amount*unitCost(ing));
+        var ucCell = document.querySelector('#prodGrid tr[data-rid="'+r.id+'"] [data-uc="'+r.ingId+'"]');
+        if(ucCell) ucCell.textContent = num(unitCost(ing), unitCost(ing)<1?4:2);
+      });
+      var t1=document.querySelector('#prodGrid [data-total="'+p.id+'"]');
+      var t2=document.querySelector('#prodGrid [data-total2="'+p.id+'"]');
+      var tf=document.querySelector('#prodGrid [data-full="'+p.id+'"]');
+      var pf=document.querySelector('#prodGrid [data-profit="'+p.id+'"]');
+      var mg=document.querySelector('#prodGrid [data-margin="'+p.id+'"]');
+      if(t1) t1.textContent = money(rc.total);
+      if(t2) t2.textContent = money(rc.total);
+      if(tf) tf.textContent = money(rc.total+(state.fixed.pack||0)+commission(p));
+      if(pf) pf.textContent = money(unitProfit(p));
+      if(mg) mg.textContent = pct(margin(p));
+    });
+    // 售价表派生列
+    state.products.forEach(function(p){
+      var rc = recipeCost(p).total;
+      var row = document.querySelector('#priceTable tr[data-id="'+p.id+'"]');
+      if(row){
+        row.children[1].textContent = money(rc);
+        row.children[4].textContent = money(unitProfit(p));
+        row.children[5].textContent = pct(margin(p));
+        row.children[6].textContent = (rc>0?num(p.price/rc,2):"—")+"×";
+        row.children[8].textContent = money(unitProfit(p)*p.daily);
+      }
+    });
+    var t=totals();
+    var tf=document.querySelector("#priceTable tfoot");
+    if(tf){
+      tf.innerHTML = '<tr><td>合计 / 加权</td><td class="num">'+money(t.avgMatCost)+'</td><td></td><td></td>'
+        + '<td class="num">'+money(t.avgUnitProfit)+'</td><td class="num">'+pct(t.avgMargin)+'</td><td></td>'
+        + '<td class="num">'+num(t.vol/(state.fixed.days||1),1)+'</td>'
+        + '<td class="num">'+money(t.gross/(state.fixed.days||1))+'</td></tr>';
+    }
+    renderBiz();
+    renderSim();
+  }
+
+  function renderAll(){
+    renderIngredients();
+    renderProducts();
+    renderPrice();
+    renderKpis();
+    renderBiz();
+    renderSim();
+    renderLog();
+    renderAbKpis();
+    renderOverviewNote();
+  }
+
+  /* ---------- 模块切换 ---------- */
+  var TABS = ["overview","ing","recipe","price","biz","sim","data"];
+  function showTab(name){
+    if(TABS.indexOf(name)<0) name = "overview";
+    TABS.forEach(function(t){
+      var on = (t===name);
+      var views = document.querySelectorAll('[data-view="'+t+'"]');
+      for(var i=0;i<views.length;i++) views[i].classList.toggle("active", on);
+      var btn = document.querySelector('.tab[data-tab="'+t+'"]');
+      if(btn) btn.classList.toggle("active", on);
+    });
+    try{ localStorage.setItem("yogurt-tab", name); }catch(e){}
+    if(window.scrollTo) window.scrollTo(0,0);
+  }
+
+  /* ---------- 事件绑定 ---------- */
+  function bind(){
+    // 原料库
+    var priceEditFrom = null;
+    var ingTable = document.getElementById("ingTable");
+    ingTable.addEventListener("input", function(e){
+      var tr = e.target.closest("tr[data-id]"); if(!tr) return;
+      var id = tr.getAttribute("data-id");
+      var ing = ingById(id); if(!ing) return;
+      var cls = e.target.className;
+      if(cls.indexOf("f-name")>=0){ ing.name = e.target.value; renderProducts(); renderPrice(); refresh(); }
+      else if(cls.indexOf("f-size")>=0){ ing.size = parseFloat(e.target.value)||0; refreshRow(tr,ing); }
+      else if(cls.indexOf("f-price")>=0){
+        if(priceEditFrom===null) priceEditFrom = ing.price;
+        var nv = parseFloat(e.target.value);
+        if(isNaN(nv)) return;
+        ing.price = nv;
+        refreshRow(tr,ing);
+      }
+      else if(cls.indexOf("f-note")>=0){ ing.note = e.target.value; }
+      save();
+    });
+    // 采购价：改动完成后（回车/失焦）写一条调价日志
+    ingTable.addEventListener("focusin", function(e){
+      if(e.target.className.indexOf("f-price")>=0) priceEditFrom = parseFloat(e.target.value);
+    });
+    ingTable.addEventListener("change", function(e){
+      var tr = e.target.closest("tr[data-id]"); if(!tr) return;
+      var ing = ingById(tr.getAttribute("data-id")); if(!ing) return;
+      var cn = e.target.className;
+      if(cn.indexOf("f-price")>=0){
+        var nv = parseFloat(e.target.value); if(isNaN(nv)) return;
+        var ov = (priceEditFrom==null ? nv : priceEditFrom);
+        priceEditFrom = null;
+        if(Math.abs(ov-nv)>1e-9){ pushLog(ing.name, ov, nv); save(); renderLog(); }
+        return;
+      }
+      if(cn.indexOf("f-cat")>=0){ ing.cat = e.target.value; renderIngredients(); save(); return; }
+      if(cn.indexOf("f-unit")>=0){ ing.unit = e.target.value; refreshRow(tr,ing); save(); }
+    });
+    ingTable.addEventListener("click", function(e){
+      // 窄屏折叠/展开
+      var tg = e.target.closest(".ing-toggle");
+      if(tg){
+        var tr0 = tg.closest("tr[data-id]"); if(!tr0) return;
+        var id0 = tr0.getAttribute("data-id");
+        var willOpen = !tr0.classList.contains("open");
+        ingOpen[id0] = willOpen;
+        tr0.classList[willOpen?"add":"remove"]("open");
+        tg.textContent = willOpen ? "收起" : "编辑";
+        tg.setAttribute("aria-expanded", willOpen?"true":"false");
+        return;
+      }
+      if(e.target.className.indexOf("del")<0) return;
+      var tr=e.target.closest("tr[data-id]"); if(!tr) return;
+      var id=tr.getAttribute("data-id");
+      var used = state.products.some(function(p){ return p.recipe.some(function(r){ return r.ingId===id; }); });
+      if(used && !confirm("有产品配方正在使用该原料，确定删除？")) return;
+      state.ingredients = state.ingredients.filter(function(i){ return i.id!==id; });
+      save(); renderAll();
+    });
+
+    document.getElementById("ingSearch").addEventListener("input", renderIngredients);
+    document.getElementById("ingFilter").addEventListener("change", renderIngredients);
+    document.getElementById("btnAddIng").addEventListener("click", function(){
+      var ing = {id:uid("i"), name:"新原料", cat:"other", size:1000, unit:"g", price:0, note:""};
+      state.ingredients.push(ing);
+      ingOpen[ing.id] = true;   // 新增后自动展开，方便填规格和价格
+      document.getElementById("ingSearch").value="";
+      document.getElementById("ingFilter").value="";
+      save(); renderAll();
+      var row = document.querySelector('#ingTable tr[data-id="'+ing.id+'"] .f-name');
+      if(row){ row.focus(); row.select(); }
+    });
+
+    // 产品区
+    var grid = document.getElementById("prodGrid");
+    grid.addEventListener("input", function(e){
+      var card = e.target.closest(".prod[data-id]"); if(!card) return;
+      var pid = card.getAttribute("data-id");
+      var p = state.products.filter(function(x){return x.id===pid;})[0]; if(!p) return;
+      if(e.target.className.indexOf("p-name")>=0){ p.name=e.target.value; renderPrice(); refresh(); save(); return; }
+      if(e.target.className.indexOf("r-amount")>=0){
+        var tr = e.target.closest("tr[data-rid]");
+        var rid = tr.getAttribute("data-rid");
+        var r = p.recipe.filter(function(x){return x.id===rid;})[0];
+        if(r){ r.amount = parseFloat(e.target.value)||0; refresh(); save(); }
+      }
+    });
+    grid.addEventListener("click", function(e){
+      var card = e.target.closest(".prod[data-id]"); if(!card) return;
+      var pid = card.getAttribute("data-id");
+      var p = state.products.filter(function(x){return x.id===pid;})[0]; if(!p) return;
+      if(e.target.className.indexOf("del-r")>=0){
+        var tr = e.target.closest("tr[data-rid]");
+        var rid = tr.getAttribute("data-rid");
+        p.recipe = p.recipe.filter(function(r){ return r.id!==rid; });
+        save(); renderAll();
+      }
+      if(e.target.className.indexOf("del-p")>=0){
+        if(!confirm("删除产品「"+p.name+"」？")) return;
+        state.products = state.products.filter(function(x){ return x.id!==pid; });
+        save(); renderAll();
+      }
+      if(e.target.className.indexOf("add-btn")>=0){
+        var sel = card.querySelector(".add-sel"), amt = card.querySelector(".add-amt");
+        var ingId = sel.value, amount = parseFloat(amt.value);
+        if(!ingId || isNaN(amount) || amount<=0){ alert("请选择原料并填写用量"); return; }
+        p.recipe.push({id:uid("r"), ingId:ingId, amount:amount});
+        amt.value="";
+        save(); renderAll();
+      }
+    });
+    document.getElementById("btnAddProd").addEventListener("click", function(){
+      var first = state.ingredients[0];
+      var p = {id:uid("p"), name:"新品酸奶碗", price:35, daily:10, recipe: first? [{id:uid("r"), ingId:first.id, amount:180}] : []};
+      state.products.push(p);
+      save(); renderAll();
+    });
+
+    // 售价表
+    var pt = document.getElementById("priceTable");
+    pt.addEventListener("input", function(e){
+      var tr = e.target.closest("tr[data-id]"); if(!tr) return;
+      var p = state.products.filter(function(x){return x.id===tr.getAttribute("data-id");})[0]; if(!p) return;
+      if(e.target.className.indexOf("p-price")>=0){ p.price = parseFloat(e.target.value)||0; refresh(); save(); }
+      if(e.target.className.indexOf("p-daily")>=0){ p.daily = parseFloat(e.target.value)||0; refresh(); save(); }
+    });
+
+    // 固定成本
+    var fields = {fRent:"rent", fLabor:"labor", fUtil:"util", fOther:"other", fPack:"pack", fRate:"rate", fDays:"days", fTarget:"target"};
+    Object.keys(fields).forEach(function(id){
+      document.getElementById(id).addEventListener("input", function(){
+        state.fixed[fields[id]] = parseFloat(this.value)||0;
+        refresh(); save();
+      });
+    });
+
+    // 模拟
+    document.getElementById("globalSim").addEventListener("input", function(){
+      var v = parseFloat(this.value)||0;
+      document.getElementById("globalSimVal").textContent = (v>0?"+":"")+v+"%";
+      state.ingredients.forEach(function(i){ state.sim[i.id] = v; });
+      renderSim(); save();
+    });
+    document.getElementById("btnSimClear").addEventListener("click", function(){
+      state.sim = {};
+      document.getElementById("globalSim").value = 0;
+      document.getElementById("globalSimVal").textContent = "0%";
+      renderSim(); save();
+    });
+    document.querySelector("#simTable").addEventListener("input", function(e){
+      if(e.target.className.indexOf("s-sim")<0) return;
+      var tr = e.target.closest("tr[data-id]"); if(!tr) return;
+      state.sim[tr.getAttribute("data-id")] = parseFloat(e.target.value)||0;
+      renderSim(); save();
+    });
+
+    // 数据管理
+    document.getElementById("btnExport").addEventListener("click", function(){
+      var blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+      var a=document.createElement("a");
+      a.href=URL.createObjectURL(blob);
+      a.download="酸奶店成本数据_"+new Date().toISOString().slice(0,10)+".json";
+      a.click(); URL.revokeObjectURL(a.href);
+    });
+    document.getElementById("btnImport").addEventListener("click", function(){ document.getElementById("fileInput").click(); });
+    document.getElementById("fileInput").addEventListener("change", function(){
+      var f=this.files[0]; if(!f) return;
+      var fr=new FileReader();
+      fr.onload=function(){
+        try{
+          var s=JSON.parse(fr.result);
+          if(!s.ingredients||!s.products) throw new Error("格式不对");
+          s.fixed = Object.assign(defaults().fixed, s.fixed||{});
+          s.sim = s.sim||{}; s.log=s.log||[];
+          state=s; save(); fillFixed(); renderAll();
+          alert("导入成功");
+        }catch(err){ alert("导入失败："+err.message); }
+      };
+      fr.readAsText(f);
+      this.value="";
+    });
+    document.getElementById("btnReset").addEventListener("click", function(){
+      if(!confirm("恢复为示例数据？当前数据会被覆盖。")) return;
+      state = defaults(); save(); fillFixed(); renderAll();
+    });
+    document.getElementById("btnPrint").addEventListener("click", function(){ window.print(); });
+
+    // 模块切换
+    var tabsEl = document.getElementById("tabs");
+    if(tabsEl){
+      tabsEl.addEventListener("click", function(e){
+        var b = e.target.closest ? e.target.closest(".tab[data-tab]") : null;
+        if(b) showTab(b.getAttribute("data-tab"));
+      });
+    }
+  }
+
+  function refreshRow(tr, ing){
+    var cell = tr.querySelector("[data-uc]");
+    if(cell){ var uc=unitCost(ing); cell.textContent = (uc<1?num(uc,4):num(uc,2))+" /"+ing.unit; }
+    var sub = tr.querySelector(".ing-sub");
+    if(sub) sub.textContent = ingSub(ing);
+    refresh();
+  }
+
+  function fillFixed(){
+    document.getElementById("fRent").value = state.fixed.rent;
+    document.getElementById("fLabor").value = state.fixed.labor;
+    document.getElementById("fUtil").value = state.fixed.util;
+    document.getElementById("fOther").value = state.fixed.other;
+    document.getElementById("fPack").value = state.fixed.pack;
+    document.getElementById("fRate").value = state.fixed.rate;
+    document.getElementById("fDays").value = state.fixed.days;
+    document.getElementById("fTarget").value = state.fixed.target;
+  }
+
+  /* ---------- 启动 ---------- */
+  state = load();
+  // 兼容旧数据：配方行补 id
+  state.products.forEach(function(p){
+    p.recipe.forEach(function(r){ if(!r.id) r.id = uid("r"); });
+  });
+  fillFixed();
+  bind();
+  renderAll();
+  var vt = document.getElementById("vtag");
+  if(vt) vt.textContent = BUILD;
+
+  var startTab = "overview";
+  try{ startTab = localStorage.getItem("yogurt-tab") || "overview"; }catch(e){}
+  showTab(startTab);
+})();
+</script>
+</body>
+</html>
