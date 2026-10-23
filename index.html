@@ -8,19 +8,19 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=8">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=8">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=8">
+<link rel="manifest" href="manifest.json?v=9">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=9">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=9">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
-    --bg:#f5f7f9;
+    --bg:#f4f6f8;
     --card:#ffffff;
-    --line:#e5e9ee;
-    --line-strong:#d3dae2;
-    --text:#1f2733;
-    --text-2:#5b6875;
-    --text-3:#8b98a5;
+    --line:#e6eaef;
+    --line-strong:#d5dce4;
+    --text:#18202b;
+    --text-2:#57626f;
+    --text-3:#8a95a3;
     --accent:#0d9488;
     --accent-soft:#e6f5f3;
     --berry:#e11d48;
@@ -28,7 +28,10 @@
     --blue:#2563eb;
     --warn:#b45309;
     --warn-soft:#fef3c7;
-    --radius:12px;
+    --radius:14px;
+    --radius-sm:10px;
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 2px 8px rgba(16,24,40,.035);
+    --shadow-pop:0 8px 26px rgba(16,24,40,.10);
   }
   *{box-sizing:border-box;}
   body{
@@ -40,7 +43,8 @@
     line-height:1.5;
     -webkit-font-smoothing:antialiased;
   }
-  .wrap{max-width:1180px;margin:0 auto;padding:20px 18px 80px;}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 18px 80px;
+    padding-bottom:calc(80px + env(safe-area-inset-bottom));}
 
   header.top{
     display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
@@ -64,28 +68,36 @@
 
   .card{
     background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
-    padding:16px 18px;margin-bottom:16px;
+    padding:18px 20px;margin-bottom:14px;box-shadow:var(--shadow);
   }
   .card > h2{
-    margin:0 0 4px;font-size:15.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    margin:0 0 5px;font-size:15.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    letter-spacing:.1px;
   }
-  .card > .desc{color:var(--text-3);font-size:12.5px;margin:0 0 14px;}
+  .card > .desc{color:var(--text-3);font-size:12.5px;margin:0 0 15px;line-height:1.6;}
   .pill{font-size:11px;font-weight:400;color:var(--text-3);border:1px solid var(--line-strong);
     border-radius:20px;padding:1px 9px;letter-spacing:.2px;}
 
   /* 指标卡 */
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;margin-bottom:16px;}
-  .kpi{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;}
-  .kpi .k-label{font-size:12px;color:var(--text-3);}
-  .kpi .k-value{font-size:22px;font-weight:600;margin-top:5px;letter-spacing:.3px;font-variant-numeric:tabular-nums;}
-  .kpi .k-sub{font-size:11.5px;color:var(--text-3);margin-top:3px;}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px;margin-bottom:14px;}
+  .kpi{position:relative;background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+    padding:13px 15px 12px 17px;box-shadow:var(--shadow);overflow:hidden;}
+  .kpi::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--line-strong);}
+  .kpi .k-label{font-size:11.5px;color:var(--text-3);letter-spacing:.1px;}
+  .kpi .k-value{font-size:21px;font-weight:600;margin-top:4px;letter-spacing:-.2px;
+    font-variant-numeric:tabular-nums;line-height:1.2;}
+  .kpi .k-sub{font-size:11px;color:var(--text-3);margin-top:4px;line-height:1.4;}
   .kpi.good .k-value{color:var(--accent);}
+  .kpi.good::after{background:var(--accent);}
   .kpi.bad .k-value{color:var(--berry);}
+  .kpi.bad{background:linear-gradient(180deg,#fffafb,#fff 70%);border-color:#f4dae0;}
+  .kpi.bad::after{background:var(--berry);}
   .kpi.info .k-value{color:var(--blue);}
+  .kpi.info::after{background:var(--blue);}
 
   table{width:100%;border-collapse:collapse;}
   th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle;}
-  th{font-size:12px;color:var(--text-3);font-weight:600;white-space:nowrap;background:#fafbfc;}
+  th{font-size:11.5px;color:var(--text-3);font-weight:600;white-space:nowrap;background:#f9fbfc;letter-spacing:.1px;}
   td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
   tbody tr:hover{background:#fafbfc;}
   tfoot td{font-weight:600;border-bottom:none;background:#fafbfc;}
@@ -111,26 +123,58 @@
   .toolbar .grow{flex:1;min-width:150px;}
 
   /* 产品卡 */
-  .prod-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:14px;}
-  .prod{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;}
-  .prod .p-head{display:flex;align-items:center;gap:8px;padding:9px 11px;background:#fafbfc;border-bottom:1px solid var(--line);cursor:pointer;}
-  .prod .p-toggle{flex:0 0 auto;width:26px;height:26px;padding:0;border:none;background:transparent;color:var(--text-3);font-size:12px;line-height:1;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .prod-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:12px;}
+  .prod{border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;background:#fff;
+    box-shadow:0 1px 2px rgba(16,24,40,.03);transition:box-shadow .18s,border-color .18s;}
+  .prod:hover{border-color:#dde3ea;}
+  .prod.open{box-shadow:0 4px 18px rgba(16,24,40,.07);border-color:#dfe5ec;}
+  .prod .p-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;
+    grid-template-areas:"tg name meta del";
+    align-items:center;gap:2px 8px;padding:10px 10px 10px 8px;
+    background:#fcfdfe;border-bottom:1px solid var(--line);cursor:pointer;}
+  .prod .p-toggle{grid-area:tg;width:24px;height:24px;padding:0;border:none;background:transparent;
+    color:var(--text-3);font-size:12px;line-height:1;border-radius:6px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;}
   .prod .p-toggle:hover{background:#eef2f6;color:var(--text);}
-  .prod .p-toggle i{display:block;font-style:normal;transition:transform .15s ease;}
+  .prod .p-toggle i{display:block;font-style:normal;transition:transform .18s ease;}
   .prod.open .p-toggle i{transform:rotate(90deg);}
   .prod .p-head input,.prod .p-head button{cursor:auto;}
   .prod .p-toggle,.prod .del-p{cursor:pointer;}
-  .prod .p-name{font-weight:600;flex:1 1 auto;min-width:80px;border:1px solid transparent;background:transparent;padding:3px 6px;border-radius:6px;}
-  .prod .p-name:hover{border-color:var(--line-strong);}
-  .prod .p-meta{flex:0 0 auto;display:flex;gap:10px;font-size:12px;color:var(--text-3);white-space:nowrap;}
-  .prod .p-meta b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums;}
-  .prod .p-body{padding:6px 13px 12px;}
+  .prod .p-name{grid-area:name;font-weight:600;font-size:14px;min-width:0;width:100%;
+    border:1px solid transparent;background:transparent;padding:3px 5px;border-radius:6px;
+    text-overflow:ellipsis;}
+  .prod .p-name:hover{border-color:var(--line-strong);background:#fff;}
+  .prod .p-name:focus{background:#fff;}
+  .prod .p-meta{grid-area:meta;display:flex;gap:6px;font-size:11.5px;color:var(--text-3);white-space:nowrap;}
+  .prod .p-meta span{background:#f2f5f8;border-radius:6px;padding:3px 7px;line-height:1.2;}
+  .prod .p-meta b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums;margin-left:2px;}
+  .prod .p-meta span.profit b{color:var(--accent);}
+  .prod .del-p{grid-area:del;width:24px;height:24px;padding:0;border:none;background:transparent;
+    color:#aab4c0;font-size:16px;line-height:1;border-radius:6px;}
+  .prod .del-p:hover{background:var(--berry-soft);color:var(--berry);border-color:transparent;}
+  .prod .p-body{padding:8px 12px 12px;}
   .prod:not(.open) .p-body{display:none;}
   .prod:not(.open) .p-head{border-bottom:none;}
   .sum-item .s-sub{font-size:11px;color:var(--text-3);margin-top:2px;line-height:1.3;}
   .rate-txt{font-size:11px;color:var(--text-3);}
-  .mix-note{margin-top:7px;font-size:12px;color:var(--text-3);line-height:1.5;}
+  .mix-note{margin-top:5px;font-size:12px;color:var(--text-3);line-height:1.55;}
+  .mix-d{margin-top:8px;font-size:12px;}
+  .mix-d summary{cursor:pointer;color:var(--text-3);list-style:none;display:inline-flex;
+    align-items:center;gap:5px;padding:2px 0;}
+  .mix-d summary::-webkit-details-marker{display:none;}
+  .mix-d summary::before{content:"\25B8";font-size:10px;transition:transform .15s;}
+  .mix-d[open] summary::before{transform:rotate(90deg);}
+  .mix-d summary:hover{color:var(--accent);}
   .demo-flag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:999px;background:#fff4e5;color:#a35b00;border:1px solid #ffd9a8;vertical-align:middle;}
+  .d-top{display:flex;gap:12px;align-items:flex-end;margin-bottom:10px;}
+  .d-top .field{flex:1 1 auto;margin:0;min-width:0;}
+  .d-sum{flex:0 0 auto;text-align:right;font-size:11.5px;color:var(--text-3);line-height:1.3;}
+  .d-sum b{display:block;font-size:16px;color:var(--text);font-variant-numeric:tabular-nums;
+    font-weight:600;margin-top:2px;white-space:nowrap;}
+  #dInputs .d-qty{text-align:left;}
+  #dInputs .d-qty::placeholder{text-align:left;color:#b3bdc8;font-size:12.5px;}
+  .sim-more{margin-top:8px;}
+  .sim-more .mini{font-size:12px;padding:5px 11px;}
   .daybar{display:flex;align-items:flex-end;gap:3px;height:70px;margin:8px 0 4px;}
   .daybar .db{flex:1 1 auto;min-width:6px;background:var(--accent);border-radius:3px 3px 0 0;opacity:.85;position:relative;}
   .daybar .db.zero{background:#dfe6ec;opacity:1;}
@@ -149,14 +193,66 @@
   .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:11.5px;color:var(--text-2);}
   .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;}
 
-  .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:10px;}
-  .sum-item{background:#fafbfc;border:1px solid var(--line);border-radius:8px;padding:8px 10px;}
-  .sum-item .s-l{font-size:11.5px;color:var(--text-3);}
-  .sum-item .s-v{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px;}
+  .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px;margin-top:10px;}
+  .sum-item{background:#fafbfc;border:1px solid var(--line);border-radius:9px;padding:8px 10px;}
+  .sum-item .s-l{font-size:11px;color:var(--text-3);line-height:1.35;}
+  .sum-item .s-v{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px;letter-spacing:-.1px;}
+  .sum-item.is-key{background:var(--accent-soft);border-color:#c9e5e1;}
+  .sum-item.is-key .s-v{color:var(--accent);}
+  .sum-item.is-bad{background:var(--berry-soft);border-color:#f4dae0;}
+  .sum-item.is-bad .s-v{color:var(--berry);}
+
+  /* 经营测算结论条 */
+  .be-hero{display:grid;grid-template-columns:1.35fr 1fr 1fr 1fr;gap:1px;
+    background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .bh-cell{background:#fff;padding:12px 14px;min-width:0;}
+  .bh-main{background:linear-gradient(180deg,#f2fbf9,#fff 90%);}
+  .bh-l{font-size:11px;color:var(--text-3);line-height:1.4;}
+  .bh-v{font-size:19px;font-weight:600;margin-top:3px;letter-spacing:-.3px;
+    font-variant-numeric:tabular-nums;line-height:1.25;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;}
+  .bh-main .bh-v{font-size:24px;color:var(--text);}
+  .bh-v small{font-size:11.5px;font-weight:400;color:var(--text-3);margin-left:3px;letter-spacing:0;}
+  .bh-v.pos{color:var(--accent);}
+  .bh-v.neg{color:var(--berry);}
+  .bh-sub{font-size:10.5px;color:var(--text-3);margin-top:3px;line-height:1.4;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
   .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 18px;}
   .field{margin-bottom:2px;}
   .field label{display:block;font-size:12px;color:var(--text-2);margin-bottom:4px;}
+
+  /* 行式表单：label 在左、数值在右，一屏能看更多 */
+  .fgroup{margin-bottom:6px;}
+  .fgroup + .fgroup{margin-top:14px;padding-top:12px;border-top:1px solid #eff2f5;}
+  details.fgroup > summary{list-style:none;cursor:pointer;padding:2px 0;}
+  details.fgroup > summary::-webkit-details-marker{display:none;}
+  details.fgroup > summary::before{content:"\25B8";font-size:10px;color:var(--text-3);
+    transition:transform .15s;flex:0 0 auto;}
+  details.fgroup[open] > summary::before{transform:rotate(90deg);}
+  details.fgroup > summary:hover{color:var(--accent);}
+
+  /* 首次配置说明：配好后默认收起 */
+  details.setup{border:1px solid var(--line);border-radius:9px;background:#fcfdfe;padding:8px 11px;margin-bottom:14px;}
+  details.setup > summary{list-style:none;cursor:pointer;font-size:12.5px;color:var(--text-2);
+    display:flex;align-items:center;gap:6px;}
+  details.setup > summary::-webkit-details-marker{display:none;}
+  details.setup > summary::before{content:"\25B8";font-size:10px;color:var(--text-3);transition:transform .15s;}
+  details.setup[open] > summary::before{transform:rotate(90deg);}
+  details.setup > summary:hover{color:var(--accent);}
+  .fg-h{margin:0 0 4px;font-size:12.5px;font-weight:600;color:var(--text-2);
+    display:flex;align-items:baseline;gap:7px;}
+  .fg-h span{font-size:11px;font-weight:400;color:var(--text-3);}
+  .frows{display:grid;grid-template-columns:1fr 1fr;gap:0 28px;}
+  .frow{display:grid;grid-template-columns:minmax(0,1fr) 108px 24px;
+    align-items:center;gap:7px;padding:7px 0;border-bottom:1px dashed #edf1f4;
+    font-size:13px;color:var(--text-2);cursor:pointer;}
+  .frow > span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .frow > span i{font-style:normal;font-size:11px;color:var(--text-3);margin-left:4px;}
+  .frow input[type=number]{padding:5px 8px;border-color:#e0e6ed;background:#fcfdfe;}
+  .frow input[type=number]:focus{background:#fff;}
+  .frow:hover > span{color:var(--text);}
+  .frow > em{font-style:normal;font-size:11px;color:var(--text-3);white-space:nowrap;}
 
   .note{font-size:12px;color:var(--text-3);margin-top:10px;line-height:1.6;}
   .hl{color:var(--berry);font-weight:600;}
@@ -178,32 +274,42 @@
   /* ---------- 模块切换 ---------- */
   .appbar{
     position:sticky;top:0;z-index:30;
-    margin:-20px -18px 16px;padding:12px 18px 0;
-    background:rgba(245,247,249,.96);
-    -webkit-backdrop-filter:saturate(180%) blur(10px);
-    backdrop-filter:saturate(180%) blur(10px);
+    margin:-20px -18px 14px;padding:11px 18px 0;
+    background:rgba(244,246,248,.94);
+    -webkit-backdrop-filter:saturate(180%) blur(12px);
+    backdrop-filter:saturate(180%) blur(12px);
     border-bottom:1px solid var(--line);
+    transition:box-shadow .2s ease;
   }
-  .ab-top{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;}
-  .ab-top h1{margin:0;font-size:16px;letter-spacing:.2px;white-space:nowrap;}
+  .appbar.scrolled{box-shadow:0 4px 16px rgba(16,24,40,.06);}
+  .ab-top{display:flex;align-items:center;justify-content:space-between;gap:8px 18px;flex-wrap:wrap;}
+  .ab-top h1{margin:0;font-size:16px;letter-spacing:.1px;white-space:nowrap;display:flex;align-items:center;}
   .vtag{
     display:inline-block;vertical-align:middle;margin-left:8px;
-    font-size:10.5px;font-weight:600;letter-spacing:.4px;
-    color:var(--accent);background:rgba(13,148,136,.10);
-    border:1px solid rgba(13,148,136,.28);
+    font-size:10px;font-weight:600;letter-spacing:.3px;
+    color:var(--accent);background:rgba(13,148,136,.09);
+    border:1px solid rgba(13,148,136,.22);
     padding:1px 6px;border-radius:20px;white-space:nowrap;
+    font-variant-numeric:tabular-nums;
   }
-  .ab-kpis{display:flex;gap:16px;}
-  .ab-kpi{font-size:11px;color:var(--text-3);line-height:1.35;}
-  .ab-kpi b{display:block;font-size:15px;color:var(--text);font-variant-numeric:tabular-nums;font-weight:600;margin-top:1px;}
-  .tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-top:8px;}
+  .ab-kpis{display:flex;align-items:stretch;background:#fff;border:1px solid var(--line);
+    border-radius:999px;padding:2px 3px;box-shadow:var(--shadow);}
+  .ab-kpi{font-size:10.5px;color:var(--text-3);line-height:1.3;text-align:right;padding:3px 13px;}
+  .ab-kpi + .ab-kpi{border-left:1px solid var(--line);}
+  .ab-kpi b{display:block;font-size:14.5px;color:var(--text);font-variant-numeric:tabular-nums;
+    font-weight:600;margin-top:1px;letter-spacing:-.1px;white-space:nowrap;}
+  .ab-kpi.up b{color:var(--accent);}
+  .ab-kpi.down b{color:var(--berry);}
+  .tabs{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;margin-top:6px;
+    scroll-behavior:smooth;scroll-snap-type:x proximity;}
   .tabs::-webkit-scrollbar{display:none;}
   .tab{
     flex:0 0 auto;border:none;background:transparent;border-radius:0;
-    padding:9px 13px;font-size:13.5px;color:var(--text-2);
+    padding:9px 12px;font-size:13px;color:var(--text-2);
     border-bottom:2px solid transparent;white-space:nowrap;
+    scroll-snap-align:center;transition:color .15s,border-color .15s;
   }
-  .tab:hover{background:transparent;color:var(--accent);border-color:transparent;border-bottom-color:rgba(13,148,136,.35);}
+  .tab:hover{background:transparent;color:var(--accent);border-color:transparent;border-bottom-color:rgba(13,148,136,.3);}
   .tab.active{color:var(--accent);font-weight:600;border-bottom-color:var(--accent);}
 
   .card[data-view]{display:none;}
@@ -212,11 +318,15 @@
   .kpis[data-view].active{display:grid;}
 
   .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
-  .ov-row{display:flex;justify-content:space-between;gap:14px;padding:9px 0;
-    border-bottom:1px dashed var(--line);font-size:13px;align-items:baseline;}
+  .ov-row{display:flex;justify-content:space-between;gap:16px;padding:9px 0;
+    border-bottom:1px solid #eff2f5;font-size:13px;align-items:baseline;}
   .ov-row:last-child{border-bottom:none;}
-  .ov-l{color:var(--text-3);flex:0 0 auto;}
-  .ov-v{font-weight:600;text-align:right;font-variant-numeric:tabular-nums;}
+  .ov-l{color:var(--text-3);flex:0 0 auto;font-size:12.5px;}
+  .ov-v{font-weight:600;text-align:right;font-variant-numeric:tabular-nums;flex:1 1 auto;}
+  .ov-ico{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--line-strong);
+    margin-right:7px;vertical-align:middle;position:relative;top:-1px;}
+  .ov-row.is-warn .ov-ico{background:var(--berry);}
+  .ov-row.is-ok .ov-ico{background:var(--accent);}
 
   /* 移动端折叠按钮：桌面不显示 */
   .ing-toggle{display:none;}
@@ -226,12 +336,15 @@
   @media (max-width:760px){
     body{font-size:13.5px;}
     .wrap{padding:14px 11px 60px;max-width:100%;}
-    .appbar{margin:-14px -11px 12px;padding:10px 11px 0;}
+    .appbar{margin:-14px -11px 10px;padding:9px 11px 0;}
     .ab-top h1{font-size:15px;}
-    .ab-kpis{gap:12px;}
-    .ab-kpi{font-size:10.5px;}
-    .ab-kpi b{font-size:14px;}
-    .tab{padding:9px 11px;font-size:13px;}
+    .ab-top{gap:7px;}
+    /* 手机上指标独占一行、三等分，长数字不再被裁切 */
+    .ab-kpis{width:100%;justify-content:space-between;border-radius:10px;padding:5px 2px;}
+    .ab-kpi{flex:1 1 0;min-width:0;text-align:center;padding:1px 4px;}
+    .ab-kpi b{font-size:14px;letter-spacing:-.3px;}
+    .ab-kpi + .ab-kpi{border-left:1px solid var(--line);}
+    .tab{padding:9px 11px;font-size:12.5px;}
     header.top{align-items:flex-start;}
     header.top h1{font-size:18px;}
     .top-actions{width:100%;}
@@ -242,12 +355,32 @@
     .kpi .k-value{font-size:18px;}
     .kpi .k-sub{font-size:10.5px;}
 
-    .card{padding:13px 12px;border-radius:10px;}
+    .card{padding:14px 13px;border-radius:12px;margin-bottom:11px;}
     .card > h2{font-size:14.5px;}
 
     .prod-grid{grid-template-columns:1fr;}
     .grid2{grid-template-columns:1fr;gap:10px;}
     .summary{grid-template-columns:repeat(2,1fr);gap:8px;}
+    .sum-item{padding:7px 9px;}
+    .sum-item .s-v{font-size:15px;}
+
+    /* 经营体检：手机上改成上下两行，长文本左对齐更好读 */
+    .ov-row{flex-direction:column;align-items:flex-start;gap:2px;padding:9px 0;}
+    .ov-v{text-align:left;line-height:1.5;}
+
+    /* 行式表单在手机上仍保持 label 左、数值右 */
+    .frows{grid-template-columns:1fr;gap:0;}
+    .frow{grid-template-columns:minmax(0,1fr) 104px 28px;padding:6px 0;font-size:13px;}
+    .frow input[type=number]{padding:5px 8px;}
+    .frow > span i{display:none;}
+    .fg-h{margin-bottom:2px;}
+
+    .be-hero{grid-template-columns:1fr 1fr;}
+    .bh-main{grid-column:1/-1;}
+    .bh-cell{padding:11px 12px;}
+    .bh-cell:last-child{grid-column:1/-1;}
+    .bh-main .bh-v{font-size:26px;}
+    .bh-v{font-size:17px;}
 
     /* 表格横向滚动 + 触控友好 */
     .scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;
@@ -259,9 +392,15 @@
     input[type=number]{min-width:64px;}
     td input[type=number]{min-width:70px;}
 
-    .prod .p-head{flex-wrap:wrap;padding:9px 10px;gap:6px;}
-    .prod .p-toggle{width:30px;height:30px;font-size:14px;}
-    .prod .p-meta{order:3;flex:1 1 100%;justify-content:space-between;gap:8px;font-size:12.5px;padding-left:2px;}
+    /* 折叠态保持一行：箭头 + 产品名 + 成本/毛利 + 删除 */
+    .prod .p-head{grid-template-columns:auto minmax(0,1fr) auto auto;
+      grid-template-areas:"tg name meta del";
+      padding:8px 8px 8px 6px;column-gap:5px;}
+    .prod .p-toggle{width:28px;height:28px;font-size:13px;}
+    .prod .del-p{width:28px;height:28px;font-size:17px;}
+    .prod .p-name{font-size:13.5px;padding:3px 4px;}
+    .prod .p-meta{font-size:11px;gap:4px;}
+    .prod .p-meta span{padding:2px 6px;}
     .prod .p-body{padding:6px 10px 10px;}
     .prod table th,.prod table td{padding:6px 4px;}
     .prod .add-row select,.prod .add-row input{font-size:14px;}
@@ -311,8 +450,8 @@
     /* ---------- 原料行：默认折叠成一行「名称 + 采购价」，点「编辑」展开 ---------- */
     #ingTable tbody tr[data-id]{
       grid-template-columns:1fr 84px auto;gap:0 9px;
-      padding:8px 10px;margin-bottom:6px;border-radius:10px;
-      align-items:center;
+      padding:7px 10px;margin-bottom:5px;border-radius:10px;
+      align-items:center;box-shadow:0 1px 2px rgba(16,24,40,.025);
     }
     #ingTable td{border:none !important;padding:0 !important;white-space:normal !important;}
     #ingTable td.c-name{grid-area:1/1/2/2;min-width:0;}
@@ -337,8 +476,8 @@
     #ingTable td.c-size,#ingTable td.c-unit,#ingTable td.c-cat,#ingTable td.c-note,#ingTable td.c-eachg{display:none !important;}
     #ingTable td.c-del{grid-area:1/3/2/4;justify-self:end;display:flex;gap:5px;flex-wrap:nowrap;}
     #ingTable .ing-toggle{
-      display:inline-block;padding:5px 8px;font-size:12px;line-height:1.1;border-radius:6px;
-      border:1px solid var(--line) !important;color:var(--text-2) !important;background:#fff;
+      display:inline-block;padding:5px 9px;font-size:12px;line-height:1.1;border-radius:6px;
+      border:1px solid var(--line-strong) !important;color:var(--text-2) !important;background:#fff;
     }
     #ingTable .del{display:none;}
 
@@ -382,7 +521,7 @@
     /* 工具栏：搜索独占一行，筛选与按钮并排 */
     .toolbar{gap:7px;}
     .toolbar .grow{flex:1 1 100%;}
-    .toolbar select{flex:1 1 auto;min-width:0;}
+    .toolbar select{flex:0 1 auto;min-width:104px;max-width:150px;}
     .toolbar > button{flex:0 0 auto;white-space:nowrap;}
 
     /* 说明文字压到两行，给列表让出空间 */
@@ -410,7 +549,41 @@
     .prod .add-row .add-sel{flex:1 1 100%;min-width:0;width:auto !important;}
     .prod .add-row .add-amt{width:auto !important;flex:1 1 auto;min-width:0;}
     .prod .add-row .add-btn{flex:0 0 auto;white-space:nowrap;}
+
+    /* 售价表：窄屏卡片化 —— 上排输入（售价/日销量/渠道），下排指标 */
+    #priceTable tbody tr[data-id]{grid-template-columns:1fr 1fr;gap:8px 12px;padding:11px 12px 11px;
+      grid-auto-flow:row;}
+    #priceTable td::before{font-size:10px;letter-spacing:.2px;margin-bottom:2px;}
+    #priceTable td.c-full{grid-area:1/1/2/3;display:flex;align-items:center;justify-content:space-between;
+      gap:8px;font-size:15px;padding-bottom:1px !important;margin-bottom:2px;
+      border-bottom:1px solid #f0f3f6;padding-top:0 !important;}
+    #priceTable td:nth-child(3){grid-area:2/1/3/2;}   /* 售价 */
+    #priceTable td:nth-child(9){grid-area:2/2/3/3;}   /* 日销量 */
+    #priceTable td:nth-child(4){grid-area:3/1/4/2;}   /* 渠道 */
+    #priceTable td:nth-child(5){grid-area:3/2/4/3;}   /* 抽佣 */
+    #priceTable td:nth-child(2){grid-area:4/1/5/2;}   /* 原料成本 */
+    #priceTable td:nth-child(6){grid-area:4/2/5/3;}   /* 单碗毛利 */
+    #priceTable td:nth-child(7){grid-area:5/1/6/2;}   /* 毛利率 */
+    #priceTable td:nth-child(8){grid-area:5/2/6/3;}   /* 加价倍率 */
+    #priceTable td:nth-child(10){grid-area:6/1/7/3;display:flex;align-items:center;
+      justify-content:space-between;background:#f6f9fa;border-radius:8px;
+      padding:5px 10px !important;margin-top:1px;}
+    #priceTable td:nth-child(10)::before{margin:0;}
+    #priceTable td[data-label="售价 ¥"] input,
+    #priceTable td[data-label="日销量（碗）"] input{font-size:15px;font-weight:600;padding:7px 9px;}
+    #priceTable td[data-label="售价 ¥"] input{border-color:#b8e2dc;background:#f5fdfb;}
+    #priceTable td[data-label="单碗毛利"]{color:var(--accent);font-size:16px;font-weight:700;}
+    #priceTable td[data-label="日毛利"]{color:var(--text);font-size:15px;}
+    #priceTable td[data-label="平台抽佣"],
+    #priceTable td[data-label="加价倍率"]{color:var(--text-2);}
+    #priceTable tfoot tr{background:#f6f9fa;border:1px solid var(--line);border-radius:10px;
+      padding:10px 12px;margin-top:2px;}
+    #priceTable tfoot td::before{font-size:10px;}
+    .p-rate{font-size:11.5px;font-weight:600;color:var(--accent);
+      background:var(--accent-soft);border-radius:999px;padding:2px 8px;font-variant-numeric:tabular-nums;}
+    #priceTable td.c-full .p-rate{display:inline-block;}
   }
+  .p-rate{display:none;}
   .prod .r-amt{width:132px;}
   .amt-box{display:flex;align-items:center;gap:4px;}
   .amt-box input[type=number]{flex:1 1 auto;min-width:0;width:auto;text-align:left;padding:6px 7px;}
@@ -474,7 +647,7 @@
   <!-- 原料库 -->
   <section class="card" data-view="ing">
     <h2>① 原料库 <span class="pill">改价格即全局生效</span></h2>
-    <p class="desc">采购价按「规格 + 单价」录入，系统自动换算单位成本（¥/g）。水果等波动品采购价变动时，直接改「采购价」即可。</p>
+    <p class="desc">按「规格 + 单价」录采购价，自动换算单位成本；水果涨价直接改采购价即可。</p>
     <div class="toolbar">
       <input type="text" id="ingSearch" class="grow" placeholder="搜索原料名称…（例如：蓝莓）">
       <select id="ingFilter" style="width:auto">
@@ -506,13 +679,16 @@
         <tbody></tbody>
       </table>
     </div>
-    <div class="note">单位成本 = 采购价 ÷ 规格数量。酸奶、牛奶等液体可用 ml（1ml ≈ 1g）。<br>按「个/份」采购的原料（如柠檬、鸡蛋），可在「每件≈」填一件大约多少 g，配方里就能按「个」或按「g」两种计量方式录入，成本自动换算。</div>
+    <details class="mix-d" style="margin-top:12px">
+      <summary>单位成本怎么算</summary>
+      <div class="note" style="margin-top:4px">单位成本 = 采购价 ÷ 规格数量。酸奶、牛奶等液体可用 ml（1ml ≈ 1g）。<br>按「个/份」采购的原料（如柠檬、鸡蛋），可在「每件≈」填一件大约多少 g，配方里就能按「个」或按「g」两种计量方式输入，成本自动换算。</div>
+    </details>
   </section>
 
   <!-- 配方 -->
   <section class="card" data-view="recipe">
     <h2>② 配方与单碗成本 <span class="pill">按产品配置用量</span></h2>
-    <p class="desc">每款酸奶碗用多少原料，成本明细与成本构成图会随原料价实时变化。用量单位与原料库保持一致；按「个」采购又按「克」使用的原料，可在单位列直接切换。<b>产品明细默认收起</b>，点左侧箭头展开编辑。</p>
+    <p class="desc">用量单位与原料库一致；按「个」采购又按「克」用的原料，可切换单位。明细默认收起，点箭头展开编辑。</p>
     <div class="prod-grid" id="prodGrid"></div>
     <div class="toolbar" style="margin-top:14px;margin-bottom:0">
       <button id="btnAddProd">+ 新增产品</button>
@@ -550,30 +726,43 @@
   <!-- 经营测算 -->
   <section class="card" data-view="biz">
     <h2>④ 固定成本与月度经营测算</h2>
-    <p class="desc">填你的固定开支，自动算月度净利和「每天要卖多少碗才不亏」。</p>
-    <div class="grid2" style="margin-bottom:14px">
-      <div class="field"><label>房租 / 月（¥）</label><input type="number" id="fRent" step="1"></div>
-      <div class="field"><label>人工 / 月（¥）</label><input type="number" id="fLabor" step="1"></div>
-      <div class="field"><label>水电物业 / 月（¥）</label><input type="number" id="fUtil" step="1"></div>
-      <div class="field"><label>其他开支 / 月（¥，营销/耗材等）</label><input type="number" id="fOther" step="1"></div>
-      <div class="field"><label>设备折旧 / 月（¥，设备买价÷使用月数）</label><input type="number" id="fDep" step="1"></div>
-      <div class="field"><label>平台月费（¥，外卖平台年费/收银软件/月租）</label><input type="number" id="fPlat" step="1"></div>
-      <div class="field"><label>税费 / 月（¥，定额税/代账等）</label><input type="number" id="fTax" step="1"></div>
-      <div class="field"><label>单碗包装成本（¥，碗+盖+勺）</label><input type="number" id="fPack" step="0.01"></div>
-      <div class="field"><label>月营业天数</label><input type="number" id="fDays" step="1"></div>
-      <div class="field"><label>目标月净利（¥，用于反推销量）</label><input type="number" id="fTarget" step="100"></div>
+    <p class="desc">填固定开支，自动算月净利和「每天卖多少碗才不亏」；改数字，上方结论实时更新。</p>
+    <div id="bizSummary"></div>
+    <div class="note" id="beNote" style="margin:12px 0 18px"></div>
+
+    <div class="fgroup">
+      <h3 class="fg-h">固定成本 <span>每月，元</span></h3>
+      <div class="frows">
+        <label class="frow"><span>房租</span><input type="number" id="fRent" step="1"><em>元</em></label>
+        <label class="frow"><span>人工 / 工资</span><input type="number" id="fLabor" step="1"><em>元</em></label>
+        <label class="frow"><span>水电物业</span><input type="number" id="fUtil" step="1"><em>元</em></label>
+        <label class="frow"><span>其他开支 <i>营销 / 耗材</i></span><input type="number" id="fOther" step="1"><em>元</em></label>
+        <label class="frow"><span>设备折旧 <i>设备买价÷月数</i></span><input type="number" id="fDep" step="1"><em>元</em></label>
+        <label class="frow"><span>平台月费 <i>年费 / 收银软件</i></span><input type="number" id="fPlat" step="1"><em>元</em></label>
+        <label class="frow"><span>税费 <i>定额税 / 代账</i></span><input type="number" id="fTax" step="1"><em>元</em></label>
+      </div>
+      <div class="note" style="margin-top:8px">月固定成本 = 以上七项相加。</div>
     </div>
-    <div class="note" style="margin-top:-6px;margin-bottom:12px">月固定成本 = 房租 + 人工 + 水电 + 其他 + 设备折旧 + 平台月费 + 税费。</div>
-    <h3 style="font-size:13.5px;margin:0 0 8px">渠道抽佣比例（%）</h3>
-    <div class="grid2" style="margin-bottom:12px">
-      <div class="field"><label>堂食 / 自提</label><input type="number" id="fDine" step="0.5"></div>
-      <div class="field"><label>外卖平台</label><input type="number" id="fTake" step="0.5"></div>
-      <div class="field"><label>团购 / 券</label><input type="number" id="fGroup" step="0.5"></div>
-      <div class="field"><label>未设渠道时默认（%）</label><input type="number" id="fRate" step="0.5"></div>
+
+    <div class="fgroup">
+      <h3 class="fg-h">经营参数</h3>
+      <div class="frows">
+        <label class="frow"><span>单碗包装成本</span><input type="number" id="fPack" step="0.01"><em>元/碗</em></label>
+        <label class="frow"><span>月营业天数</span><input type="number" id="fDays" step="1"><em>天</em></label>
+        <label class="frow"><span>目标月净利 <i>用来反推销量</i></span><input type="number" id="fTarget" step="100"><em>元</em></label>
+      </div>
     </div>
-    <div class="note" style="margin-top:-4px;margin-bottom:12px">在「③ 售价」页给每个产品选渠道，抽佣就按渠道算；也可以单独给某款产品填一个比例覆盖它。</div>
-    <div class="summary" id="bizSummary"></div>
-    <div class="note" id="beNote"></div>
+
+    <details class="fgroup fold">
+      <summary class="fg-h">渠道抽佣 <span id="chSum">—</span></summary>
+      <div class="frows">
+        <label class="frow"><span>堂食 / 自提</span><input type="number" id="fDine" step="0.5"><em>%</em></label>
+        <label class="frow"><span>外卖平台</span><input type="number" id="fTake" step="0.5"><em>%</em></label>
+        <label class="frow"><span>团购 / 券</span><input type="number" id="fGroup" step="0.5"><em>%</em></label>
+        <label class="frow"><span>未设渠道时默认</span><input type="number" id="fRate" step="0.5"><em>%</em></label>
+      </div>
+      <div class="note" style="margin-top:8px">在「③ 售价」页给每个产品选渠道，抽佣就按渠道算；也可以单独给某款产品填一个比例覆盖它。</div>
+    </details>
   </section>
 
   <!-- 敏感度 -->
@@ -587,6 +776,7 @@
       <button id="btnSimClear" class="mini">清零</button>
       <span class="muted" style="font-size:12px">也可在下表单独调某一项（如草莓 +20%）</span>
     </div>
+    <div class="sim-more"><button id="btnSimAll" class="mini"></button></div>
     <div class="scroll-x cards">
       <table id="simTable">
         <thead>
@@ -612,11 +802,11 @@
   <section class="card" data-view="log">
     <h2>⑥ 每日记账 <span class="pill">实际卖了什么</span></h2>
     <p class="desc">每天记一次各产品实际卖了几碗，才知道「计划」和「现实」差多少。默认已带出计划销量，改数字即可；毛利按当前成本与售价估算。</p>
-    <div class="grid2" style="margin-bottom:10px">
+    <div class="d-top">
       <div class="field"><label>日期</label><input type="date" id="dDate"></div>
-      <div class="field"><label>当天合计</label><div id="dSumNow" class="s-v" style="font-size:16px">—</div></div>
+      <div class="d-sum"><span>当天合计</span><b id="dSumNow">—</b></div>
     </div>
-    <div id="dInputs" class="grid2" style="margin-bottom:12px"></div>
+    <div id="dInputs" style="margin-bottom:10px"></div>
     <div class="toolbar" style="margin-bottom:12px">
       <button id="dFill">按计划填入</button>
       <button id="dSave" class="primary">保存今天</button>
@@ -627,16 +817,15 @@
     <h3 style="font-size:13.5px;margin:0 0 4px">最近 14 天</h3>
     <div class="daybar" id="dBar"></div>
     <div class="daybar-x" id="dBarX"></div>
-    <div class="scroll-x" style="margin-top:12px">
+    <div class="scroll-x narrow" style="margin-top:12px">
       <table id="dTable">
         <thead>
           <tr>
-            <th style="min-width:110px">日期</th>
+            <th style="min-width:96px">日期</th>
             <th class="num">碗数</th>
             <th class="num">实际毛利</th>
-            <th class="num">计划毛利</th>
-            <th class="num">差异</th>
-            <th style="width:60px"></th>
+            <th class="num">vs 计划</th>
+            <th style="width:44px"></th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -655,13 +844,15 @@
   <section class="card" data-view="data">
     <h2>⑧ 云端同步 <span class="pill" id="syncPill">未开启</span></h2>
     <p class="desc">开启后，电脑和任意几台手机都读写同一个私有仓库里的数据文件：改一处，其他设备下次打开就是最新数据。</p>
-    <div class="note" style="margin:0 0 14px;padding:10px 12px;background:#fafbfc;border:1px solid var(--line);border-radius:8px">
-      <b>三步开启（只需做一次）：</b><br>
-      1. <a href="https://github.com/new?name=yogurt-data&amp;visibility=private" target="_blank" rel="noopener">新建私有仓库</a>：名字填 <b>yogurt-data</b>，选 <b>Private</b>，不要勾任何初始化选项<br>
-      2. <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">生成 token</a>：Only select repositories 只勾刚建的仓库 → Permissions 里 <b>Contents 设为 Read and write</b> → 有效期建议 1 年<br>
-      3. 把仓库名和 token 填进下面两栏，点「保存并启用」<br>
-      <span class="muted">建议先在平时用的主力设备上开启，把它的数据当起点；另外几台填同样的仓库和 token 即可。</span>
-    </div>
+    <details class="setup" id="setupBox">
+      <summary>首次配置：三步开启同步</summary>
+      <div class="note" style="margin:8px 0 14px;padding:10px 12px;background:#fafbfc;border:1px solid var(--line);border-radius:8px">
+        1. <a href="https://github.com/new?name=yogurt-data&amp;visibility=private" target="_blank" rel="noopener">新建私有仓库</a>：名字填 <b>yogurt-data</b>，选 <b>Private</b>，不要勾任何初始化选项<br>
+        2. <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">生成 token</a>：Only select repositories 只勾刚建的仓库 → Permissions 里 <b>Contents 设为 Read and write</b> → 有效期建议 1 年<br>
+        3. 把仓库名和 token 填进下面两栏，点「保存并启用」<br>
+        <span class="muted">建议先在平时用的主力设备上开启，把它的数据当起点；另外几台填同样的仓库和 token 即可。</span>
+      </div>
+    </details>
     <div class="grid2">
       <div class="field"><label>仓库（用户名/仓库名）</label><input type="text" id="sRepo" placeholder="xinyechen958-ops/yogurt-data" autocomplete="off"></div>
       <div class="field"><label>token（只存本机浏览器）</label><input type="password" id="sToken" placeholder="github_pat_…" autocomplete="off"></div>
@@ -670,7 +861,7 @@
       <button id="btnSyncSave" class="primary">保存并启用</button>
       <button id="btnSyncNow">立即同步</button>
       <button id="btnSyncOff" class="ghost">关闭同步</button>
-      <button id="btnSyncClear" class="ghost">清除 token</button>
+      <button id="btnSyncClear" class="ghost" title="清除本机保存的 token">清除</button>
     </div>
     <div id="syncStatus" class="note" style="margin-top:10px">未开启云端同步 —— 数据只存在这台设备的浏览器里。</div>
   </section>
@@ -698,7 +889,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v8 · 1035";
+  var BUILD = "v9 · 1124";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -925,9 +1116,13 @@
     // 加 1e-9 修正浮点误差：1.005*100 = 100.49999… 会被 round 成 1.00（少半分）
     var v = Math.round((Math.abs(n) + 1e-9) * 100) / 100;
     var p = v.toFixed(2).split(".");
-    return "¥" + (neg?"-":"") + p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "." + p[1];
+    // 负号放在 ¥ 前面（-¥5.00），符合中文记账习惯
+    return (neg?"-":"") + "¥" + p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "." + p[1];
   }
-  function money0(n){ return "¥" + Math.round(n).toLocaleString("zh-CN"); }
+  function money0(n){
+    n = Math.round((+n)||0);
+    return (n<0?"-":"") + "¥" + Math.abs(n).toLocaleString("zh-CN");
+  }
   function num(n,d){ d = (d==null?2:d); return (Math.round(n*Math.pow(10,d))/Math.pow(10,d)).toFixed(d); }
   function pct(n,d){ d=(d==null?1:d); return (n*100).toFixed(d)+"%"; }
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
@@ -1214,7 +1409,7 @@
     var el=document.getElementById("kpis");
     var items = [
       {label:"平均单碗原料成本", value:money(t.avgMatCost), sub:"含包装成本", cls:""},
-      {label:"加权平均毛利率", value:pct(t.avgMargin), sub:"扣原料+包装+抽佣", cls: t.avgMargin>0.55?"good":"bad"},
+      {label:"加权平均毛利率", value:pct(t.avgMargin), sub:"扣原料+包装+抽佣", cls: t.avgMargin>=0.55?"good":(t.avgMargin>=0.3?"":"bad")},
       {label:"月营业额", value:money0(t.revenue), sub:"按当前日销量 × "+state.fixed.days+"天", cls:"info"},
       {label:"月毛利", value:money0(t.gross), sub:"单碗均 "+money(t.avgUnitProfit), cls: t.gross>0?"good":"bad"},
       {label:"月净利", value:money0(t.net), sub:"已扣固定成本 "+money0(t.fixedM), cls: t.net>0?"good":"bad"},
@@ -1233,7 +1428,7 @@
     el.innerHTML =
         '<div class="ab-kpi">单碗成本<b>' + money(t.avgMatCost) + '</b></div>'
       + '<div class="ab-kpi">毛利率<b>' + pct(t.avgMargin) + '</b></div>'
-      + '<div class="ab-kpi">月净利<b style="color:' + (t.net>=0 ? 'var(--accent)' : 'var(--berry)') + '">' + money0(t.net) + '</b></div>';
+      + '<div class="ab-kpi ' + (t.net>=0 ? 'up' : 'down') + '">月净利<b>' + money0(t.net) + '</b></div>';
   }
 
   function renderOverviewNote(){
@@ -1362,10 +1557,10 @@
         +   '<button type="button" class="p-toggle" aria-expanded="'+(isOpenNow?'true':'false')+'" title="展开 / 收起配方明细"><i>&#9656;</i></button>'
         +   '<input type="text" class="p-name" value="'+esc(p.name)+'">'
         +   '<span class="p-meta">'
-        +     '<span>成本 <b data-headtotal="'+p.id+'">'+money(rc.total)+'</b></span>'
-        +     '<span>毛利 <b data-headprofit="'+p.id+'">'+money(unitProfit(p))+'</b></span>'
+        +     '<span>成本<b data-headtotal="'+p.id+'">'+money(rc.total)+'</b></span>'
+        +     '<span class="profit">毛利<b data-headprofit="'+p.id+'">'+money(unitProfit(p))+'</b></span>'
         +   '</span>'
-        +   '<button type="button" class="mini ghost del-p">删除</button>'
+        +   '<button type="button" class="del-p" aria-label="删除产品" title="删除产品">&times;</button>'
         + '</div>'
         + '<div class="p-body">'
         +   '<div class="scroll-x narrow"><table><thead><tr><th>原料</th><th class="num">用量 / 单位</th><th class="num r-uc">单价</th><th class="num">成本</th><th></th></tr></thead>'
@@ -1380,10 +1575,9 @@
         +   '<div class="legend">'+legend+'</div>'
         +   '<div class="summary">'
         +     '<div class="sum-item"><div class="s-l">原料成本</div><div class="s-v" data-total2="'+p.id+'">'+money(rc.total)+'</div></div>'
-        +     '<div class="sum-item"><div class="s-l">+包装+抽佣</div><div class="s-v" data-full="'+p.id+'">'+money(rc.total+(state.fixed.pack||0)+commission(p))+'</div></div>'
-        +     '<div class="sum-item"><div class="s-l">售价</div><div class="s-v">'+money(p.price)+'</div></div>'
-        +     '<div class="sum-item"><div class="s-l">单碗毛利</div><div class="s-v" data-profit="'+p.id+'">'+money(unitProfit(p))+'</div></div>'
-        +     '<div class="sum-item"><div class="s-l">毛利率</div><div class="s-v" data-margin="'+p.id+'">'+pct(margin(p))+'</div></div>'
+        +     '<div class="sum-item"><div class="s-l">含包装 + 抽佣</div><div class="s-v" data-full="'+p.id+'">'+money(rc.total+(state.fixed.pack||0)+commission(p))+'</div></div>'
+        +     '<div class="sum-item is-key"><div class="s-l">单碗毛利</div><div class="s-v" data-profit="'+p.id+'">'+money(unitProfit(p))+'</div></div>'
+        +     '<div class="sum-item is-key"><div class="s-l">毛利率</div><div class="s-v" data-margin="'+p.id+'">'+pct(margin(p))+'</div></div>'
         +   '</div>'
         + '</div></div>';
     }).join("");
@@ -1408,7 +1602,7 @@
       var chOpts = '<option value=""'+(p.ch?"":" selected")+'>未设置</option>'
         + CHS().map(function(c){ return '<option value="'+c.k+'"'+(p.ch===c.k?" selected":"")+'>'+c.n+'</option>'; }).join("");
       return '<tr data-id="'+p.id+'">'
-        + '<td class="c-full" data-label="">'+esc(p.name)+'</td>'
+        + '<td class="c-full" data-label=""><span class="p-nm">'+esc(p.name)+'</span><span class="p-rate">'+pct(margin(p))+'</span></td>'
         + '<td class="num" data-label="原料成本">'+money(rc)+'</td>'
         + '<td class="num" data-label="售价 ¥"><input type="number" class="p-price" step="0.5" min="0" value="'+p.price+'"></td>'
         + '<td data-label="渠道"><select class="p-ch" style="width:auto;min-width:82px">'+chOpts+'</select></td>'
@@ -1452,19 +1646,29 @@
       parts.push("悲观 " + (r.worst==null? "不可能" : num(r.worst,1)));
       return parts.join(" · ");
     }
-    var items = [
-      {l:"月固定成本", v:money0(t.fixedM), sub:"含折旧/平台费/税费"},
-      {l:"月毛利", v:money0(t.gross), sub:"单碗均 "+money(t.avgUnitProfit)},
-      {l:"月净利", v:money0(t.net), cls:t.net<0?"bad":"good"},
-      {l:"净利润率", v: t.revenue>0? pct(t.net/t.revenue) : "—", sub:""},
-      {l:"盈亏平衡日销量", v: rangeTxt(be), sub: rangeSub(be)},
-      {l:"目标净利所需日销量", v: rangeTxt(beT), sub: rangeSub(beT)}
-    ];
-    document.getElementById("bizSummary").innerHTML = items.map(function(i){
-      return '<div class="sum-item"><div class="s-l">'+i.l+'</div>'
-        + '<div class="s-v"'+(i.cls? ' style="color:var(--'+(i.cls==="bad"?"berry":"accent")+')"':'')+'>'+i.v+'</div>'
-        + (i.sub? '<div class="s-sub">'+i.sub+'</div>' : '')+'</div>';
-    }).join("");
+    document.getElementById("bizSummary").innerHTML =
+        '<div class="be-hero">'
+      +   '<div class="bh-cell bh-main">'
+      +     '<div class="bh-l">盈亏平衡日销量</div>'
+      +     '<div class="bh-v">'+(be.avg==null? "—" : num(be.avg,1))+'<small>'+(be.avg==null?"":"碗/天")+'</small></div>'
+      +     '<div class="bh-sub">'+ (be.avg==null? "单碗毛利为负，无法保本" : rangeSub(be)) +'</div>'
+      +   '</div>'
+      +   '<div class="bh-cell">'
+      +     '<div class="bh-l">月净利</div>'
+      +     '<div class="bh-v '+(t.net<0?"neg":"pos")+'">'+money0(t.net)+'</div>'
+      +     '<div class="bh-sub">利润率 '+(t.revenue>0? pct(t.net/t.revenue) : "—")+'</div>'
+      +   '</div>'
+      +   '<div class="bh-cell">'
+      +     '<div class="bh-l">月毛利</div>'
+      +     '<div class="bh-v">'+money0(t.gross)+'</div>'
+      +     '<div class="bh-sub">固定成本 '+money0(t.fixedM)+'</div>'
+      +   '</div>'
+      +   '<div class="bh-cell">'
+      +     '<div class="bh-l">目标净利所需</div>'
+      +     '<div class="bh-v">'+rangeTxt(beT)+'</div>'
+      +     '<div class="bh-sub">目标 '+money0(state.fixed.target||0)+'</div>'
+      +   '</div>'
+      + '</div>';
 
     var note;
     if(avgUnit<=0){
@@ -1474,11 +1678,19 @@
     }else{
       note = '当前日均 <span class="hl ok">'+num(curDaily,1)+'</span> 碗，高于盈亏平衡线 '+num(beDaily,1)+' 碗/天，安全边际 <span class="hl ok">'+pct((curDaily-beDaily)/(curDaily||1))+'</span>。';
     }
-    // 结构假设要写明：加权平均只在产品结构不变时成立
+    // 结构假设要写明：加权平均只在产品结构不变时成立（手机端默认收起，避免长文压屏）
     var mix = state.products.slice().sort(function(a,b){ return (b.daily||0)-(a.daily||0); })
+      .slice(0,5)
       .map(function(p){ return esc(p.name)+" "+pct((p.daily||0)/(t.vol||1),0); }).join("、");
-    note += '<div class="mix-note">平衡线按当前销量结构估算（'+mix+'）。只卖最高毛利款 = 乐观值，只卖最低毛利款 = 悲观值，实际在这两者之间。</div>';
+    note += '<details class="mix-d"><summary>平衡线是怎么估的</summary>'
+      + '<div class="mix-note">按当前销量结构估算（'+mix+'）。只卖最高毛利款 = 乐观值，只卖最低毛利款 = 悲观值，实际落在两者之间；产品结构一变，保本线就会移动。</div></details>';
     document.getElementById("beNote").innerHTML = note;
+
+    var chs = document.getElementById("chSum");
+    if(chs){
+      var cr = state.fixed.chRates || {};
+      chs.textContent = "堂食 "+num(cr.dine||0,0)+"% · 外卖 "+num(cr.take||0,0)+"% · 团购 "+num(cr.group||0,0)+"%";
+    }
   }
 
   /* ---------- 示例数据角标：改动过就消失 ---------- */
@@ -1507,11 +1719,12 @@
     if(!state.products.length){
       box.innerHTML = '<div class="empty">还没有产品，先到「③ 售价」页添加产品</div>';
     }else{
-      box.innerHTML = state.products.map(function(p){
+      box.innerHTML = '<div class="frows">' + state.products.map(function(p){
         var v = (rec && rec.s[p.id] != null) ? rec.s[p.id] : "";
-        return '<div class="field"><label>'+esc(p.name)+'</label>'
-          + '<input type="number" class="d-qty" data-pid="'+p.id+'" step="1" min="0" value="'+v+'" placeholder="计划 '+num(p.daily||0,0)+' 碗"></div>';
-      }).join("");
+        return '<label class="frow"><span>'+esc(p.name)+'</span>'
+          + '<input type="number" class="d-qty" data-pid="'+p.id+'" step="1" min="0" value="'+v+'" placeholder="计划 '+num(p.daily||0,0)+' 碗">'
+          + '<em>碗</em></label>';
+      }).join("") + '</div>';
     }
     var st = document.getElementById("dState");
     if(st) st.textContent = rec ? "这天已记录，可修改后重新保存" : "这天还没记录";
@@ -1560,10 +1773,16 @@
       var dt = new Date(); dt.setDate(dt.getDate()-i);
       var ds = dateStr(dt);
       var r = getDay(ds);
-      labels.push(pad2(dt.getMonth()+1)+"/"+pad2(dt.getDate()));
+      // 14 个标签在手机上会挤成一团，每 3 天标一个
+      labels.push(i % 3 === 0 ? pad2(dt.getMonth()+1)+"/"+pad2(dt.getDate()) : "");
       vals.push(r ? dayQty(r) : 0);
     }
     var maxv = Math.max.apply(null, vals.concat([1]));
+    var barEl = document.getElementById("dBar");
+    var barX = document.getElementById("dBarX");
+    var hasDays = state.days.length > 0;
+    if(barEl) barEl.style.display = hasDays ? "flex" : "none";
+    if(barX) barX.style.display = hasDays ? "flex" : "none";
     document.getElementById("dBar").innerHTML = vals.map(function(v){
       var h = Math.max(2, Math.round(v/maxv*100));
       return '<div class="db'+(v===0?" zero":"")+'" style="height:'+h+'%" title="'+v+' 碗"></div>';
@@ -1578,20 +1797,25 @@
         + '<td class="c-full" data-label="">'+rec.d+'</td>'
         + '<td class="num" data-label="碗数">'+num(q,0)+'</td>'
         + '<td class="num" data-label="实际毛利">'+money(pr)+'</td>'
-        + '<td class="num muted" data-label="计划毛利">'+money(pl)+'</td>'
-        + '<td class="num" data-label="差异" style="color:'+(df<0?"var(--berry)":"var(--accent)")+'">'+(df>=0?"+":"")+money(df)+'</td>'
+        + '<td class="num" data-label="vs 计划" title="计划毛利 '+money(pl)+'" style="color:'+(df<0?"var(--berry)":"var(--accent)")+'">'+(df>=0?"+":"")+money(df)+'</td>'
         + '<td class="right" data-label=""><button class="mini ghost d-del">×</button></td>'
         + '</tr>';
     }).join("");
-    tb.innerHTML = rows || '<tr><td colspan="6" class="empty">暂无记录</td></tr>';
+    tb.innerHTML = rows || '<tr><td colspan="5" class="empty">暂无记录</td></tr>';
   }
 
   /* ---------- 渲染：敏感度 ---------- */
   function simFactors(){
     var f={};
-    for(var k in state.sim){ if(state.sim.hasOwnProperty(k)) f[k] = 1 + state.sim[k]/100; }
+    for(var k in state.sim){
+      if(!state.sim.hasOwnProperty(k)) continue;
+      var v = parseFloat(state.sim[k]);          // 允许输入 "-" 这种中间态
+      if(isNaN(v)) v = 0;
+      f[k] = 1 + v/100;
+    }
     return f;
   }
+  var simShowAll = false;
   function renderSim(){
     var usage = monthlyUsage();
     var f = simFactors();
@@ -1612,7 +1836,18 @@
     });
     rows.sort(function(a,b){ return b.mc - a.mc; });
 
-    tb.innerHTML = rows.map(function(r){
+    // 默认只列成本最大的 8 项（其余折叠），自己调过涨跌的始终保留
+    var shown = simShowAll ? rows : rows.filter(function(r, i){
+      return i < 8 || !!state.sim[r.ing.id];
+    });
+    var hidden = rows.length - shown.length;
+    var btnAll = document.getElementById("btnSimAll");
+    if(btnAll){
+      btnAll.textContent = simShowAll ? "只看成本最大的 8 项" : (hidden>0 ? "显示其余 "+hidden+" 种原料" : "已显示全部");
+      btnAll.style.display = hidden>0 || simShowAll ? "inline-block" : "none";
+    }
+
+    tb.innerHTML = shown.map(function(r){
       var s = state.sim[r.ing.id]||0;
       return '<tr data-id="'+r.ing.id+'">'
         + '<td class="c-full" data-label="">'+esc(r.ing.name)+'</td>'
@@ -1727,7 +1962,7 @@
   }
 
   /* ---------- 模块切换 ---------- */
-  var TABS = ["overview","ing","recipe","price","biz","sim","data"];
+  var TABS = ["overview","ing","recipe","price","biz","sim","log","data"];
   function showTab(name){
     if(TABS.indexOf(name)<0) name = "overview";
     TABS.forEach(function(t){
@@ -1738,6 +1973,12 @@
       if(btn) btn.classList.toggle("active", on);
     });
     try{ localStorage.setItem("yogurt-tab", name); }catch(e){}
+    // 让当前 tab 横向居中（手机上 8 个 tab 放不下，避免选中的那个在屏幕外）
+    var nav = document.getElementById("tabs");
+    var act = nav && nav.querySelector(".tab.active");
+    if(nav && act && nav.scrollWidth > nav.clientWidth + 2){
+      nav.scrollLeft = Math.max(0, act.offsetLeft - (nav.clientWidth - act.offsetWidth)/2);
+    }
     if(window.scrollTo) window.scrollTo(0,0);
   }
 
@@ -1852,7 +2093,7 @@
       var pid = card.getAttribute("data-id");
       var p = state.products.filter(function(x){return x.id===pid;})[0]; if(!p) return;
       // 展开 / 收起配方明细（点头条或箭头；点输入框、按钮不触发）
-      if(e.target.closest(".p-toggle")){ toggleProd(pid, card); return; }
+      if(e.target.closest(".p-toggle") || e.target.closest(".p-meta")){ toggleProd(pid, card); return; }
       if(e.target.classList && e.target.classList.contains("p-head")){ toggleProd(pid, card); return; }
       if(e.target.className.indexOf("del-r")>=0){
         var tr = e.target.closest("tr[data-rid]");
@@ -2001,9 +2242,14 @@
     });
     document.getElementById("btnSimClear").addEventListener("click", function(){
       state.sim = {};
+      simShowAll = false;
       document.getElementById("globalSim").value = 0;
       document.getElementById("globalSimVal").textContent = "0%";
       renderSim(); save();
+    });
+    document.getElementById("btnSimAll").addEventListener("click", function(){
+      simShowAll = !simShowAll;
+      renderSim();
     });
     document.querySelector("#simTable").addEventListener("input", function(e){
       if(e.target.className.indexOf("s-sim")<0) return;
@@ -2126,7 +2372,7 @@
   /* ---------- 暴露计算核心，供自动化测试使用（不影响页面） ---------- */
   try{
     window.YC = {
-      money:money, num:num, pct:pct, unitCost:unitCost, unitCostIn:unitCostIn, amtInIngUnit:amtInIngUnit,
+      money:money, money0:money0, num:num, pct:pct, unitCost:unitCost, unitCostIn:unitCostIn, amtInIngUnit:amtInIngUnit,
       recipeCost:recipeCost, rateOf:rateOf, commission:commission, unitProfit:unitProfit, margin:margin,
       totals:totals, monthlyUsage:monthlyUsage, beRange:beRange, defaults:defaults, normalize:normalize,
       dayQty:dayQty, dayProfit:dayProfit, planDayProfit:planDayProfit, monthStat:monthStat,
@@ -2148,9 +2394,26 @@
   var vt = document.getElementById("vtag");
   if(vt) vt.textContent = BUILD;
 
+  // 还没配同步的设备，把「三步开启」默认展开
+  try{
+    if(!syncReady()){
+      var sb = document.getElementById("setupBox");
+      if(sb) sb.open = true;
+    }
+  }catch(e){}
+
   var startTab = "overview";
   try{ startTab = localStorage.getItem("yogurt-tab") || "overview"; }catch(e){}
   showTab(startTab);
+
+  // 滚动时给顶栏加一点阴影，区分内容层级
+  var bar = document.querySelector(".appbar");
+  function onScroll(){
+    if(!bar) return;
+    bar.classList.toggle("scrolled", (window.pageYOffset || document.documentElement.scrollTop || 0) > 4);
+  }
+  window.addEventListener("scroll", onScroll, {passive:true});
+  onScroll();
 })();
 </script>
 </body>
