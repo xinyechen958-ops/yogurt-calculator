@@ -3,14 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#0d9488">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=10">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=10">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=10">
+<link rel="manifest" href="manifest.json?v=11">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=11">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=11">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -180,6 +183,12 @@
     padding:11px 13px;margin:0 0 12px;font-size:13px;color:#8a5200;line-height:1.5;}
   .firstrun b{color:#7a4400;}
   .firstrun button{margin-left:auto;flex:0 0 auto;}
+  .firstrun button + button{margin-left:0;}
+  .linkbox{margin-top:14px;padding:12px 14px;border:1px dashed var(--line);border-radius:10px;background:#fbfcfd;}
+  .lb-title{font-size:13px;font-weight:600;color:#1f2937;}
+  .linkbox input[type=text]{width:100%;margin-top:9px;font-size:12px;padding:9px 10px;
+    border:1px solid var(--line);border-radius:8px;background:#fff;color:#334155;word-break:break-all;}
+  .linkbox code{background:#eef1f5;padding:1px 5px;border-radius:4px;font-size:12px;color:#334155;}
   .wxtip{display:flex;align-items:flex-start;gap:10px;
     background:#eef4ff;border:1px solid #cfdcff;border-radius:10px;
     padding:11px 13px;margin:0 0 12px;font-size:12.5px;color:#26417a;line-height:1.55;}
@@ -663,8 +672,9 @@
   </div>
 
   <div class="firstrun" id="firstRun" style="display:none">
-    <span>⚠️ 你现在看到的是<b>程序自带的示例数据</b>，不是你的真实账目。多台设备要看到同一份数据，需要连一次云端。</span>
+    <span>⚠️ 你现在看到的是<b>程序自带的示例数据</b>，不是你的真实账目。换手机、换浏览器、微信里打开都会各存一份，想看到同一份数据就得连一次云端。</span>
     <button type="button" class="mini" id="btnGoSync">去连接云端</button>
+    <button type="button" class="mini" id="btnPasteLink">我有同步链接</button>
   </div>
 
   <div class="kpis active" id="kpis" data-view="overview"></div>
@@ -894,6 +904,18 @@
       <button id="btnSyncClear" class="ghost" title="清除本机保存的 token">清除</button>
     </div>
     <div id="syncStatus" class="note" style="margin-top:10px">未开启云端同步 —— 数据只存在这台设备的浏览器里。</div>
+
+    <div class="linkbox">
+      <div class="lb-title">同步链接 · 换设备不用再填 token</div>
+      <p class="desc" style="margin:4px 0 10px">把仓库和 token 藏进网址的 <code>#</code> 后面。<b>任何手机、任何浏览器、微信里</b>打开这条链接，都会自动连上云端这份数据 —— 手机和电脑看到的永远是同一份。</p>
+      <div class="btn-row">
+        <button id="btnGenLink">生成同步链接</button>
+        <button id="btnCopyLink">复制</button>
+        <button id="btnUseLink" class="primary">用这条链接恢复数据</button>
+      </div>
+      <input type="text" id="linkBox" placeholder="点「生成同步链接」后显示在这里；也可以把同步链接粘贴到这里，再点「用这条链接恢复数据」" autocomplete="off" spellcheck="false">
+      <div class="muted" style="margin-top:7px;font-size:12px">链接只在你自己手里，<code>#</code> 后面的内容不会发给任何服务器。存进手机备忘录即可。<br>顺序很重要：<b>先在存着真实数据的那台设备上开启同步并上传</b>，再把生成的链接拿到别的设备打开。</div>
+    </div>
   </section>
 
   <section class="card" data-view="data">
@@ -906,6 +928,7 @@
       <button id="btnReset" class="ghost">恢复示例</button>
     </div>
     <input type="file" id="fileInput" accept="application/json,.json" style="display:none">
+    <div class="note" id="diagInfo" style="margin-top:12px"></div>
     <div class="note">
       <b>添加到手机主屏幕：</b>安卓 Chrome 打开页面后，点右上角「⋮」→「添加到主屏幕」，桌面就会多一个图标，点开即用。<br>
       提示：本地文件打开的页面，部分浏览器会把它加为「书签快捷方式」而不是独立 App 窗口，功能完全一样。
@@ -919,7 +942,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v10 · 1144";
+  var BUILD = "v11 · 1435";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -1233,6 +1256,72 @@
   function persistSyncCfg(){ try{ localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg)); }catch(e){} }
   function syncReady(){ return !!(syncCfg.on && syncCfg.repo && syncCfg.token); }
 
+  /* ---------- 同步链接：把仓库 + token 写进网址，换设备/换浏览器打开即自动接云端 ----------
+     背景：同一个网址在「Chrome 标签页 / 微信内置浏览器 / 桌面图标 App / 另一台电脑」里
+     各自是互不相通的 localStorage 抽屉，所以只有当初录数据的那个入口看得到真实数据。
+     把凭据写进网址（# 片段不会发给服务器），任何入口打开都能直接连上同一份云端数据。 */
+  function qsObj(str){
+    var o = {};
+    String(str||"").replace(/^[?#]/,"").split("&").forEach(function(kv){
+      if(!kv) return;
+      var i = kv.indexOf("=");
+      var k = i < 0 ? kv : kv.slice(0,i);
+      var v = i < 0 ? "" : kv.slice(i+1);
+      try{ o[decodeURIComponent(k.replace(/\+/g," "))] = decodeURIComponent(v.replace(/\+/g," ")); }
+      catch(e){ o[k] = v; }
+    });
+    return o;
+  }
+  // 既能吃整条网址，也能吃 "r=用户名/仓库&k=token" 这种片段
+  function parseSyncLink(text){
+    text = String(text||"").trim();
+    if(!text) return null;
+    var q = text, m = /[?#]([\s\S]*)$/.exec(text);
+    if(m) q = m[1];
+    else if(q.indexOf("=") < 0) return null;
+    var o = qsObj(q), cfg = {};
+    ["r","repo"].forEach(function(k){ if(o[k]) cfg.repo = o[k]; });
+    ["k","t","token"].forEach(function(k){ if(o[k]) cfg.token = o[k]; });
+    ["p","path"].forEach(function(k){ if(o[k]) cfg.path = o[k]; });
+    ["b","branch"].forEach(function(k){ if(o[k]) cfg.branch = o[k]; });
+    if(!cfg.repo || !cfg.token) return null;
+    cfg.repo = cfg.repo.trim()
+      .replace(/^https?:\/\/(www\.)?github\.com\//i,"")
+      .replace(/\.git$/i,"").replace(/\/+$/,"");
+    cfg.token = cfg.token.trim().replace(/\s+/g,"");
+    if(!/^[\w.-]+\/[\w.-]+$/.test(cfg.repo)) return null;
+    return cfg;
+  }
+  function syncLinkOf(){
+    if(!syncCfg.repo || !syncCfg.token) return "";
+    var base = (location.origin && location.origin !== "null") ? location.origin : "";
+    var q = ["r="+encodeURIComponent(syncCfg.repo), "k="+encodeURIComponent(syncCfg.token)];
+    if(syncCfg.path && syncCfg.path !== "yogurt-data.json") q.push("p="+encodeURIComponent(syncCfg.path));
+    if(syncCfg.branch && syncCfg.branch !== "main") q.push("b="+encodeURIComponent(syncCfg.branch));
+    return base + (location.pathname || "/") + "#" + q.join("&");
+  }
+  function applySyncLink(cfg){
+    if(!cfg) return false;
+    syncCfg.repo = cfg.repo; syncCfg.token = cfg.token;
+    if(cfg.path) syncCfg.path = cfg.path;
+    if(cfg.branch) syncCfg.branch = cfg.branch;
+    syncCfg.on = true;
+    syncRt.sha = null; syncRt.lastTs = 0; syncRt.lastCheck = 0;
+    persistSyncCfg();
+    var sRepoEl = document.getElementById("sRepo");
+    var sTokEl  = document.getElementById("sToken");
+    if(sRepoEl) sRepoEl.value = syncCfg.repo;
+    if(sTokEl)  sTokEl.value  = syncCfg.token;
+    return true;
+  }
+  // 网址里的凭据只在进页面的那一次生效，用完立刻从地址栏抹掉，避免 token 留在浏览记录里
+  function takeSyncFromUrl(){
+    var cfg = null;
+    try{ cfg = parseSyncLink(location.search) || parseSyncLink(location.hash); }catch(e){}
+    if(cfg){ try{ if(history.replaceState) history.replaceState(null, "", location.pathname || "/"); }catch(e){} }
+    return cfg;
+  }
+
   function b64enc(str){ return btoa(unescape(encodeURIComponent(str))); }
   function b64dec(str){ return decodeURIComponent(escape(atob(String(str).replace(/\s+/g,"")))); }
 
@@ -1374,10 +1463,11 @@
       syncRt.dirty = true;
       setSyncStatus("err", "上传失败：" + e.message + "（数据仍在本机，联网后会自动重试）");
       return false;
-    }finally{ setBusy(false); }
+    }finally{ setBusy(false); renderSrcChip(); }
   }
 
-  async function syncNow(manual){
+  async function syncNow(manual, opts){
+    opts = opts||{};
     if(!syncReady()){
       if(manual) alert("还没启用同步：请填写仓库和 token，再点「保存并启用」。");
       return false;
@@ -1393,6 +1483,11 @@
       var localTs = state.updatedAt || 0;
       var localBrief = dataBrief(state);
       if(!rem || !rem.data){
+        // 本机是示例数据、云端又是空的：绝不能把示例当种子传上去，否则真实数据永远回不来
+        if(state.demo){
+          setSyncStatus("err", "云端还没有数据文件，这台设备又只有示例数据 —— 请先在「存着真实数据」的那台设备上开启同步并上传，再把同步链接拿到这台设备打开。");
+          return false;
+        }
         var t0 = Math.max(localTs, Date.now());
         state.updatedAt = t0;
         await remotePut({schema:1, updatedAt:t0, data:state});
@@ -1402,6 +1497,12 @@
       }
       var remTs = rem.updatedAt || 0;
       var remBrief = dataBrief(rem.data);
+      // 用同步链接在新设备上恢复：本机是空的/示例的，一律以云端为准
+      if(opts.forcePull){
+        applyRemote(rem);
+        setSyncStatus("ok", "已按链接恢复云端数据：" + remBrief + "（云端更新于 " + fmtWhen(remTs) + "）。");
+        return true;
+      }
       if(sigOf(state) === sigOf(rem.data)){
         syncRt.lastTs = Math.max(localTs, remTs);
         syncRt.dirty = false;
@@ -1433,7 +1534,11 @@
       setSyncStatus("err", "同步失败：" + e.message);
       if(manual) alert("同步失败：" + e.message);
       return false;
-    }finally{ setBusy(false); syncRt.lastCheck = Date.now(); }
+    }finally{
+      setBusy(false);
+      syncRt.lastCheck = Date.now();
+      renderSrcChip();   // 解锁后再刷一次，否则角标会一直停在「同步中…」
+    }
   }
 
   /* ---------- 渲染：KPI ---------- */
@@ -1746,10 +1851,23 @@
     el.textContent = txt;
     el.title = tip;
     el.style.display = "";
+    renderDiag();
   }
   function hhmm(ts){
     var d = new Date(ts);
     return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  }
+  /* 诊断信息：一眼看出「这个抽屉里到底有没有数据」，比对两台设备时很有用 */
+  function renderDiag(){
+    var el = document.getElementById("diagInfo");
+    if(!el) return;
+    var when = state.updatedAt ? fmtWhen(state.updatedAt) : "从未保存过";
+    el.innerHTML = "本机诊断：版本 " + esc(BUILD)
+      + " · " + esc(dataBrief(state))
+      + " · 本机更新于 " + esc(when)
+      + " · " + esc(state.demo ? "当前是示例数据" : "本机有真实数据")
+      + "<br>存储位置 " + esc((location.origin || "本地文件") + location.pathname)
+      + "（换浏览器 / 微信 / 桌面图标 = 换一个互不相通的抽屉，只有连了云端才会一样）";
   }
   /* 示例数据 + 未连云端 → 顶部横幅提醒，避免把示例数字当成自己的账 */
   function renderFirstRun(){
@@ -2418,6 +2536,62 @@
         setSyncStatus("off", "token 已从本机清除。");
       });
     }
+
+    // 同步链接：换设备时不用再手填 token
+    var linkBox = document.getElementById("linkBox");
+    function copyText(t){
+      try{
+        if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t); return true; }
+      }catch(e){}
+      try{
+        var ta = document.createElement("textarea");
+        ta.value = t;
+        ta.style.position = "fixed"; ta.style.top = "0"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        var ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return !!ok;
+      }catch(e){ return false; }
+    }
+    var gb = document.getElementById("btnGenLink");
+    if(gb) gb.addEventListener("click", function(){
+      if(!syncCfg.repo || !syncCfg.token){
+        alert("还没配置云端：先把上面的仓库和 token 填好，点「保存并启用」，再来生成链接。");
+        return;
+      }
+      var link = syncLinkOf();
+      if(linkBox) linkBox.value = link;
+      var copied = copyText(link);
+      setSyncStatus("ok", "同步链接已生成" + (copied ? "并已复制" : "（复制失败，请手动长按选中下面这行）")
+        + "：<br><b>" + esc(link) + "</b><br>在任何设备的浏览器里打开它，就会自动连上这份云端数据。");
+    });
+    var cb = document.getElementById("btnCopyLink");
+    if(cb) cb.addEventListener("click", function(){
+      var t = linkBox ? (linkBox.value||"").trim() : "";
+      if(!t){ alert("先点「生成同步链接」。"); return; }
+      alert(copyText(t) ? "已复制到剪贴板。" : "复制失败，请手动长按选中链接后复制。");
+    });
+    var ub = document.getElementById("btnUseLink");
+    if(ub) ub.addEventListener("click", function(){
+      var txt = linkBox ? (linkBox.value||"") : "";
+      var cfg = parseSyncLink(txt);
+      if(!cfg){
+        alert("没认出同步链接。请把完整链接（或 r=用户名/仓库&k=token 这一段）粘贴到上面的输入框里，再点这个按钮。");
+        return;
+      }
+      applySyncLink(cfg);
+      if(!state.demo && !confirm("这台设备本机也有一份数据（" + dataBrief(state) + "）。\n\n【确定】用云端数据覆盖本机\n【取消】保留本机、把本机传上云端")){
+        syncNow(true);
+        return;
+      }
+      setSyncStatus("busy", "已按链接连接云端 · 仓库 " + cfg.repo + "，正在拉取…");
+      syncNow(true, {forcePull:true});
+    });
+    var pb = document.getElementById("btnPasteLink");
+    if(pb) pb.addEventListener("click", function(){
+      showTab("data");
+      if(linkBox){ linkBox.focus(); linkBox.scrollIntoView({block:"center"}); }
+    });
     document.addEventListener("visibilitychange", function(){
       if(document.hidden){
         // 切到后台后浏览器会把 setTimeout 节流到分钟级，1.8 秒的自动上传可能永远不执行 → 立刻补发
@@ -2480,13 +2654,17 @@
   }catch(e){}
 
   /* ---------- 启动 ---------- */
+  // 网址里带同步凭据（#r=…&k=…）时先落到本机，再load，这样本机一有数据就会自动对云端
+  var urlCfg = takeSyncFromUrl();
+  var fromLink = urlCfg ? applySyncLink(urlCfg) : false;
+
   state = load();
   fillFixed();
   bind();
   renderAll();
   if(syncReady()){
-    setSyncStatus("busy", "已开启同步 · 仓库 " + syncCfg.repo + "，正在核对…");
-    setTimeout(function(){ syncNow(false); }, 600);
+    setSyncStatus("busy", (fromLink ? "已按链接连接云端 · " : "已开启同步 · ") + "仓库 " + syncCfg.repo + "，正在核对…");
+    setTimeout(function(){ syncNow(false, {forcePull: fromLink && !!state.demo}); }, 600);
   }
   var vt = document.getElementById("vtag");
   if(vt) vt.textContent = BUILD;
