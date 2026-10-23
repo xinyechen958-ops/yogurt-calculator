@@ -8,9 +8,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=7">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=7">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=7">
+<link rel="manifest" href="manifest.json?v=8">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=8">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=8">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -127,6 +127,15 @@
   .prod .p-body{padding:6px 13px 12px;}
   .prod:not(.open) .p-body{display:none;}
   .prod:not(.open) .p-head{border-bottom:none;}
+  .sum-item .s-sub{font-size:11px;color:var(--text-3);margin-top:2px;line-height:1.3;}
+  .rate-txt{font-size:11px;color:var(--text-3);}
+  .mix-note{margin-top:7px;font-size:12px;color:var(--text-3);line-height:1.5;}
+  .demo-flag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:999px;background:#fff4e5;color:#a35b00;border:1px solid #ffd9a8;vertical-align:middle;}
+  .daybar{display:flex;align-items:flex-end;gap:3px;height:70px;margin:8px 0 4px;}
+  .daybar .db{flex:1 1 auto;min-width:6px;background:var(--accent);border-radius:3px 3px 0 0;opacity:.85;position:relative;}
+  .daybar .db.zero{background:#dfe6ec;opacity:1;}
+  .daybar-x{display:flex;gap:3px;font-size:10px;color:var(--text-3);}
+  .daybar-x span{flex:1 1 auto;text-align:center;overflow:hidden;white-space:nowrap;}
   .save-state{font-size:12.5px;color:var(--text-3);display:inline-flex;align-items:center;gap:6px;line-height:1.4;}
   .save-state.ok{color:var(--accent);}
   .save-state.err{color:var(--berry);}
@@ -440,7 +449,7 @@
 
   <header class="appbar">
     <div class="ab-top">
-      <h1>希腊酸奶 · 成本利润<span class="vtag" id="vtag">v2</span></h1>
+      <h1>希腊酸奶 · 成本利润<span class="vtag" id="vtag">v2</span><span class="demo-flag" id="demoFlag" style="display:none">示例数据</span></h1>
       <div class="ab-kpis" id="abKpis"></div>
     </div>
     <nav class="tabs" id="tabs">
@@ -450,6 +459,7 @@
       <button class="tab" data-tab="price">售价</button>
       <button class="tab" data-tab="biz">经营</button>
       <button class="tab" data-tab="sim">模拟</button>
+      <button class="tab" data-tab="log">记账</button>
       <button class="tab" data-tab="data">数据</button>
     </nav>
   </header>
@@ -522,6 +532,7 @@
             <th style="min-width:140px">产品</th>
             <th class="num">原料成本</th>
             <th class="num" style="width:100px">售价 ¥</th>
+            <th style="width:120px">渠道</th>
             <th class="num">平台抽佣</th>
             <th class="num">单碗毛利</th>
             <th class="num">毛利率</th>
@@ -545,11 +556,22 @@
       <div class="field"><label>人工 / 月（¥）</label><input type="number" id="fLabor" step="1"></div>
       <div class="field"><label>水电物业 / 月（¥）</label><input type="number" id="fUtil" step="1"></div>
       <div class="field"><label>其他开支 / 月（¥，营销/耗材等）</label><input type="number" id="fOther" step="1"></div>
+      <div class="field"><label>设备折旧 / 月（¥，设备买价÷使用月数）</label><input type="number" id="fDep" step="1"></div>
+      <div class="field"><label>平台月费（¥，外卖平台年费/收银软件/月租）</label><input type="number" id="fPlat" step="1"></div>
+      <div class="field"><label>税费 / 月（¥，定额税/代账等）</label><input type="number" id="fTax" step="1"></div>
       <div class="field"><label>单碗包装成本（¥，碗+盖+勺）</label><input type="number" id="fPack" step="0.01"></div>
-      <div class="field"><label>平台抽佣比例（%，外卖/团购）</label><input type="number" id="fRate" step="0.5"></div>
       <div class="field"><label>月营业天数</label><input type="number" id="fDays" step="1"></div>
       <div class="field"><label>目标月净利（¥，用于反推销量）</label><input type="number" id="fTarget" step="100"></div>
     </div>
+    <div class="note" style="margin-top:-6px;margin-bottom:12px">月固定成本 = 房租 + 人工 + 水电 + 其他 + 设备折旧 + 平台月费 + 税费。</div>
+    <h3 style="font-size:13.5px;margin:0 0 8px">渠道抽佣比例（%）</h3>
+    <div class="grid2" style="margin-bottom:12px">
+      <div class="field"><label>堂食 / 自提</label><input type="number" id="fDine" step="0.5"></div>
+      <div class="field"><label>外卖平台</label><input type="number" id="fTake" step="0.5"></div>
+      <div class="field"><label>团购 / 券</label><input type="number" id="fGroup" step="0.5"></div>
+      <div class="field"><label>未设渠道时默认（%）</label><input type="number" id="fRate" step="0.5"></div>
+    </div>
+    <div class="note" style="margin-top:-4px;margin-bottom:12px">在「③ 售价」页给每个产品选渠道，抽佣就按渠道算；也可以单独给某款产品填一个比例覆盖它。</div>
     <div class="summary" id="bizSummary"></div>
     <div class="note" id="beNote"></div>
   </section>
@@ -586,16 +608,52 @@
     <div class="summary" id="simSummary" style="margin-top:12px"></div>
   </section>
 
+  <!-- 每日记账 -->
+  <section class="card" data-view="log">
+    <h2>⑥ 每日记账 <span class="pill">实际卖了什么</span></h2>
+    <p class="desc">每天记一次各产品实际卖了几碗，才知道「计划」和「现实」差多少。默认已带出计划销量，改数字即可；毛利按当前成本与售价估算。</p>
+    <div class="grid2" style="margin-bottom:10px">
+      <div class="field"><label>日期</label><input type="date" id="dDate"></div>
+      <div class="field"><label>当天合计</label><div id="dSumNow" class="s-v" style="font-size:16px">—</div></div>
+    </div>
+    <div id="dInputs" class="grid2" style="margin-bottom:12px"></div>
+    <div class="toolbar" style="margin-bottom:12px">
+      <button id="dFill">按计划填入</button>
+      <button id="dSave" class="primary">保存今天</button>
+      <span id="dState" class="save-state"></span>
+    </div>
+    <div class="summary" id="dMonth" style="margin-bottom:12px"></div>
+    <div id="dNote" class="note" style="margin-bottom:12px"></div>
+    <h3 style="font-size:13.5px;margin:0 0 4px">最近 14 天</h3>
+    <div class="daybar" id="dBar"></div>
+    <div class="daybar-x" id="dBarX"></div>
+    <div class="scroll-x" style="margin-top:12px">
+      <table id="dTable">
+        <thead>
+          <tr>
+            <th style="min-width:110px">日期</th>
+            <th class="num">碗数</th>
+            <th class="num">实际毛利</th>
+            <th class="num">计划毛利</th>
+            <th class="num">差异</th>
+            <th style="width:60px"></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
   <!-- 调价记录 -->
   <section class="card" data-view="data">
-    <h2>⑥ 调价记录</h2>
+    <h2>⑦ 调价记录</h2>
     <p class="desc">每次修改采购价会自动留痕，方便回头核对是哪些原料在推高成本。</p>
     <div class="log" id="logBox"></div>
   </section>
 
   <!-- 云端同步 -->
   <section class="card" data-view="data">
-    <h2>⑦ 云端同步 <span class="pill" id="syncPill">未开启</span></h2>
+    <h2>⑧ 云端同步 <span class="pill" id="syncPill">未开启</span></h2>
     <p class="desc">开启后，电脑和任意几台手机都读写同一个私有仓库里的数据文件：改一处，其他设备下次打开就是最新数据。</p>
     <div class="note" style="margin:0 0 14px;padding:10px 12px;background:#fafbfc;border:1px solid var(--line);border-radius:8px">
       <b>三步开启（只需做一次）：</b><br>
@@ -618,7 +676,7 @@
   </section>
 
   <section class="card" data-view="data">
-    <h2>⑧ 备份与打印</h2>
+    <h2>⑨ 备份与打印</h2>
     <p class="desc">导出/导入是「手动搬运」，适合没开云端同步时换设备，或做一份离线存档。</p>
     <div class="btn-row">
       <button id="btnExport">导出数据</button>
@@ -640,7 +698,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v7 · 1917";
+  var BUILD = "v8 · 1035";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -679,22 +737,29 @@
       I("树莓/覆盆子","fruit",125,"g",25,"高价易损"),
       I("无花果","fruit",500,"g",36,"")
     ];
-    function P(name,price,daily,recipe){ return {id:uid("p"),name:name,price:price,daily:daily,recipe:recipe}; }
+    function P(name,price,daily,recipe){ return {id:uid("p"),name:name,price:price,daily:daily,ch:"",rate:null,recipe:recipe}; }
     function R(idx,amount){ return {ingId:ings[idx].id, amount:amount}; }
     return {
       ingredients: ings,
       products: [
-        P("经典希腊酸奶碗",32,25,[R(0,180),R(2,30),R(4,15),R(10,10),R(12,20),R(13,30)]),
-        P("莓果盈盈碗",38,18,[R(0,180),R(2,25),R(4,12),R(8,15),R(12,40),R(13,40)]),
-        P("热带芒果碗",36,15,[R(0,180),R(2,30),R(15,60),R(14,30),R(7,8)]),
-        P("坚果能量碗",42,12,[R(0,200),R(2,30),R(4,35),R(6,8),R(10,12),R(14,25)])
+        P("经典希腊酸奶碗",32,7,[R(0,180),R(2,30),R(4,15),R(10,10),R(12,20),R(13,30)]),
+        P("莓果盈盈碗",38,5,[R(0,180),R(2,25),R(4,12),R(8,15),R(12,40),R(13,40)]),
+        P("热带芒果碗",36,4,[R(0,180),R(2,30),R(15,60),R(14,30),R(7,8)]),
+        P("坚果能量碗",42,3,[R(0,200),R(2,30),R(4,35),R(6,8),R(10,12),R(14,25)])
       ],
-      fixed:{rent:8000,labor:12000,util:1500,other:1000,pack:1.2,rate:18,days:30,target:20000},
+      fixed:{rent:8000,labor:12000,util:1500,other:1000,dep:0,plat:0,tax:0,pack:1.2,rate:18,days:30,target:20000,
+             chRates:{dine:0,take:20,group:15}},
       sim:{},
       log:[],
+      days:[],
+      demo:true,
       updatedAt:0
     };
   }
+
+  /* 渠道：堂食 / 外卖 / 团购（抽佣比例不同） */
+  function CHS(){ return [{k:"dine",n:"堂食"},{k:"take",n:"外卖"},{k:"group",n:"团购"}]; }
+  function chName(k){ for(var i=0;i<CHS().length;i++){ if(CHS()[i].k===k) return CHS()[i].n; } return ""; }
 
   /* ---------- 计算核心 ---------- */
   function unitCost(ing){ return ing.size>0 ? ing.price/ing.size : 0; }
@@ -740,7 +805,14 @@
   }
 
   function priceOf(product){ return product.price||0; }
-  function commission(p){ return priceOf(p) * (state.fixed.rate||0)/100; }
+  // 抽佣比例：产品自定义 > 渠道比例 > 全局比例（保证老数据不变）
+  function rateOf(p){
+    if(p.rate!=null && p.rate!=="") return +p.rate||0;
+    var cr = state.fixed.chRates||{};
+    if(p.ch && cr[p.ch]!=null) return +cr[p.ch]||0;
+    return +(state.fixed.rate||0);
+  }
+  function commission(p){ return priceOf(p) * rateOf(p)/100; }
   function unitProfit(p, factorMap){ return priceOf(p) - recipeCost(p,factorMap).total - (state.fixed.pack||0) - commission(p); }
   function margin(p, factorMap){ var pr=priceOf(p); return pr>0 ? unitProfit(p,factorMap)/pr : 0; }
 
@@ -756,7 +828,8 @@
       gross += unitProfit(p,factorMap)*v;
       vol += v;
     }
-    var fixedM = (state.fixed.rent||0)+(state.fixed.labor||0)+(state.fixed.util||0)+(state.fixed.other||0);
+    var fixedM = (state.fixed.rent||0)+(state.fixed.labor||0)+(state.fixed.util||0)+(state.fixed.other||0)
+               + (state.fixed.dep||0)+(state.fixed.plat||0)+(state.fixed.tax||0);
     return {
       matCost:matCost, revenue:revenue, gross:gross, vol:vol,
       fixedM:fixedM, net:gross-fixedM,
@@ -779,10 +852,78 @@
     return map;
   }
 
+  /* ---------- 盈亏平衡：给出乐观—加权—悲观区间 ---------- */
+  // 单点的「加权平均」隐含产品结构不变的假设，实际会偏；这里同时算三种结构
+  function beRange(extraProfit){
+    var t = totals();
+    var days = state.fixed.days || 1;
+    var need = t.fixedM + (extraProfit||0);
+    var ups = state.products.map(function(p){ return unitProfit(p); });
+    var best  = ups.length ? Math.max.apply(null, ups) : 0;
+    var worst = ups.length ? Math.min.apply(null, ups) : 0;
+    function d(u){ return u > 0 ? need/(u*days) : null; }
+    return {
+      avg: d(t.avgUnitProfit), best: d(best), worst: d(worst),
+      bestUnit: best, worstUnit: worst, avgUnit: t.avgUnitProfit,
+      fixedM: t.fixedM, days: days
+    };
+  }
+
+  /* ---------- 每日记账 ---------- */
+  function pad2(n){ return String(n).padStart(2,"0"); }
+  function todayStr(){ var d=new Date(); return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }
+  function monthPrefix(d){ return String(d||"").slice(0,7); }
+  function getDay(d){
+    for(var i=0;i<state.days.length;i++){ if(state.days[i].d===d) return state.days[i]; }
+    return null;
+  }
+  function setDaySales(d, sales){
+    var rec = getDay(d);
+    if(!rec){ rec = {d:d, s:{}}; state.days.push(rec); }
+    rec.s = sales;
+    state.days.sort(function(a,b){ return a.d<b.d ? 1 : (a.d>b.d ? -1 : 0); });
+    if(state.days.length > 365) state.days.length = 365;   // 只留一年
+    save();
+  }
+  function delDay(d){
+    state.days = state.days.filter(function(x){ return x.d !== d; });
+    save();
+  }
+  function dayQty(rec){ var n=0; for(var k in rec.s){ if(rec.s.hasOwnProperty(k)) n += (+rec.s[k])||0; } return n; }
+  // 当天实际毛利（按当前成本与售价估算）
+  function dayProfit(rec){
+    var sum = 0;
+    for(var k in rec.s){
+      if(!rec.s.hasOwnProperty(k)) continue;
+      var p = state.products.filter(function(x){ return x.id===k; })[0];
+      if(p) sum += ((+rec.s[k])||0) * unitProfit(p);
+    }
+    return sum;
+  }
+  // 计划（按当前日销设定）一天的毛利
+  function planDayProfit(){
+    var sum = 0;
+    state.products.forEach(function(p){ sum += (p.daily||0) * unitProfit(p); });
+    return sum;
+  }
+  function monthStat(prefix){
+    var qty=0, profit=0, plan=0, n=0;
+    state.days.forEach(function(rec){
+      if(monthPrefix(rec.d) !== prefix) return;
+      n++;
+      qty += dayQty(rec);
+      profit += dayProfit(rec);
+      plan += planDayProfit();
+    });
+    return {days:n, qty:qty, profit:profit, plan:plan, delta:profit-plan};
+  }
+
   /* ---------- 格式化 ---------- */
   function money(n){
-    var v = Math.round(n*100)/100;
-    var neg = v < 0; v = Math.abs(v);
+    n = (+n)||0;                                   // 空值/NaN 当 0
+    var neg = n < 0;
+    // 加 1e-9 修正浮点误差：1.005*100 = 100.49999… 会被 round 成 1.00（少半分）
+    var v = Math.round((Math.abs(n) + 1e-9) * 100) / 100;
     var p = v.toFixed(2).split(".");
     return "¥" + (neg?"-":"") + p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "." + p[1];
   }
@@ -797,6 +938,8 @@
     s.fixed = Object.assign(defaults().fixed, s.fixed||{});
     s.sim = s.sim||{};
     s.log = s.log||[];
+    s.days = Array.isArray(s.days) ? s.days : [];
+    if(s.demo == null) s.demo = false;
     s.updatedAt = s.updatedAt||0;
     // 兼容旧数据：配方行补 id、原料补 eachG
     s.ingredients.forEach(function(i){ if(i.eachG==null) i.eachG = 0; });
@@ -806,6 +949,7 @@
   function save(opts){
     opts = opts||{};
     if(!opts.keepTs) state.updatedAt = Date.now();
+    if(state.demo && !opts.keepDemo) state.demo = false;   // 用户一旦改动过，就不再算「示例数据」
     try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
     if(syncCfg && syncCfg.on && !opts.nosync) schedulePush();
   }
@@ -961,7 +1105,7 @@
   function applyRemote(rem){
     state = normalize(rem.data);
     state.updatedAt = rem.updatedAt || state.updatedAt || Date.now();
-    save({nosync:true, keepTs:true});
+    save({nosync:true, keepTs:true, keepDemo:true});
     fillFixed(); renderAll();
     syncRt.lastTs = state.updatedAt;
     setSyncStatus("ok", "已拉取云端最新数据（" + fmtWhen(syncRt.lastTs) + " 的版本）。");
@@ -1256,15 +1400,19 @@
   function renderPrice(){
     var tb = document.querySelector("#priceTable tbody");
     var tf = document.querySelector("#priceTable tfoot");
-    if(!state.products.length){ tb.innerHTML='<tr><td colspan="9" class="empty">暂无产品</td></tr>'; tf.innerHTML=""; return; }
+    if(!state.products.length){ tb.innerHTML='<tr><td colspan="10" class="empty">暂无产品</td></tr>'; tf.innerHTML=""; return; }
     tb.innerHTML = state.products.map(function(p){
       var rc = recipeCost(p).total;
       var pr = unitProfit(p);
+      var rt = rateOf(p);
+      var chOpts = '<option value=""'+(p.ch?"":" selected")+'>未设置</option>'
+        + CHS().map(function(c){ return '<option value="'+c.k+'"'+(p.ch===c.k?" selected":"")+'>'+c.n+'</option>'; }).join("");
       return '<tr data-id="'+p.id+'">'
         + '<td class="c-full" data-label="">'+esc(p.name)+'</td>'
         + '<td class="num" data-label="原料成本">'+money(rc)+'</td>'
         + '<td class="num" data-label="售价 ¥"><input type="number" class="p-price" step="0.5" min="0" value="'+p.price+'"></td>'
-        + '<td class="num muted" data-label="平台抽佣">'+money(commission(p))+'</td>'
+        + '<td data-label="渠道"><select class="p-ch" style="width:auto;min-width:82px">'+chOpts+'</select></td>'
+        + '<td class="num muted" data-label="平台抽佣" data-comm="'+p.id+'">'+money(commission(p))+' <span class="rate-txt">'+num(rt,1)+'%</span></td>'
         + '<td class="num" data-label="单碗毛利" data-profit2="'+p.id+'">'+money(pr)+'</td>'
         + '<td class="num" data-label="毛利率" data-margin2="'+p.id+'">'+pct(margin(p))+'</td>'
         + '<td class="num muted" data-label="加价倍率">'+(rc>0?num(p.price/rc,2):"—")+'×</td>'
@@ -1274,7 +1422,7 @@
     }).join("");
     var t=totals();
     tf.innerHTML = '<tr><td class="c-full" data-label="合计 / 加权平均">合计 / 加权</td>'
-      + '<td class="num" data-label="原料成本">'+money(t.avgMatCost)+'</td><td data-label=""></td><td data-label=""></td>'
+      + '<td class="num" data-label="原料成本">'+money(t.avgMatCost)+'</td><td data-label=""></td><td data-label=""></td><td data-label=""></td>'
       + '<td class="num" data-label="单碗毛利">'+money(t.avgUnitProfit)+'</td>'
       + '<td class="num" data-label="毛利率">'+pct(t.avgMargin)+'</td><td data-label=""></td>'
       + '<td class="num" data-label="日销量（碗）">'+num(t.vol/(state.fixed.days||1),1)+'</td>'
@@ -1289,16 +1437,33 @@
     var beDaily = avgUnit>0 ? t.fixedM/(avgUnit*days) : 0;
     var targetDaily = avgUnit>0 ? (t.fixedM + (state.fixed.target||0))/(avgUnit*days) : 0;
     var curDaily = t.vol/days;
+    var be = beRange(0);
+    var beT = beRange(state.fixed.target||0);
+    function rangeTxt(r){
+      if(r.avg == null) return "毛利为负，无法保本";
+      var lo = (r.best==null? null : r.best), hi = (r.worst==null? null : r.worst);
+      if(lo==null || hi==null) return num(r.avg,1)+" 碗/天（有产品毛利为负）";
+      return num(r.avg,1)+" 碗/天";
+    }
+    function rangeSub(r){
+      if(r.avg == null) return "";
+      var parts = [];
+      parts.push("乐观 " + (r.best==null? "—" : num(r.best,1)));
+      parts.push("悲观 " + (r.worst==null? "不可能" : num(r.worst,1)));
+      return parts.join(" · ");
+    }
     var items = [
-      {l:"月固定成本", v:money0(t.fixedM)},
-      {l:"月毛利", v:money0(t.gross)},
-      {l:"月净利", v:money0(t.net)},
-      {l:"净利润率", v: t.revenue>0? pct(t.net/t.revenue) : "—"},
-      {l:"盈亏平衡日销量", v: num(beDaily,1)+" 碗/天"},
-      {l:"目标净利所需日销量", v: num(targetDaily,1)+" 碗/天"}
+      {l:"月固定成本", v:money0(t.fixedM), sub:"含折旧/平台费/税费"},
+      {l:"月毛利", v:money0(t.gross), sub:"单碗均 "+money(t.avgUnitProfit)},
+      {l:"月净利", v:money0(t.net), cls:t.net<0?"bad":"good"},
+      {l:"净利润率", v: t.revenue>0? pct(t.net/t.revenue) : "—", sub:""},
+      {l:"盈亏平衡日销量", v: rangeTxt(be), sub: rangeSub(be)},
+      {l:"目标净利所需日销量", v: rangeTxt(beT), sub: rangeSub(beT)}
     ];
     document.getElementById("bizSummary").innerHTML = items.map(function(i){
-      return '<div class="sum-item"><div class="s-l">'+i.l+'</div><div class="s-v">'+i.v+'</div></div>';
+      return '<div class="sum-item"><div class="s-l">'+i.l+'</div>'
+        + '<div class="s-v"'+(i.cls? ' style="color:var(--'+(i.cls==="bad"?"berry":"accent")+')"':'')+'>'+i.v+'</div>'
+        + (i.sub? '<div class="s-sub">'+i.sub+'</div>' : '')+'</div>';
     }).join("");
 
     var note;
@@ -1309,7 +1474,116 @@
     }else{
       note = '当前日均 <span class="hl ok">'+num(curDaily,1)+'</span> 碗，高于盈亏平衡线 '+num(beDaily,1)+' 碗/天，安全边际 <span class="hl ok">'+pct((curDaily-beDaily)/(curDaily||1))+'</span>。';
     }
+    // 结构假设要写明：加权平均只在产品结构不变时成立
+    var mix = state.products.slice().sort(function(a,b){ return (b.daily||0)-(a.daily||0); })
+      .map(function(p){ return esc(p.name)+" "+pct((p.daily||0)/(t.vol||1),0); }).join("、");
+    note += '<div class="mix-note">平衡线按当前销量结构估算（'+mix+'）。只卖最高毛利款 = 乐观值，只卖最低毛利款 = 悲观值，实际在这两者之间。</div>';
     document.getElementById("beNote").innerHTML = note;
+  }
+
+  /* ---------- 示例数据角标：改动过就消失 ---------- */
+  function renderDemoFlag(){
+    var el = document.getElementById("demoFlag");
+    if(el) el.style.display = state.demo ? "inline-block" : "none";
+  }
+
+  /* ---------- 渲染：每日记账 ---------- */
+  function dateStr(dt){ return dt.getFullYear()+"-"+pad2(dt.getMonth()+1)+"-"+pad2(dt.getDate()); }
+  function curDaySales(){
+    var out = {};
+    Array.prototype.forEach.call(document.querySelectorAll("#dInputs .d-qty"), function(inp){
+      if(inp.value === "") return;
+      out[inp.getAttribute("data-pid")] = parseFloat(inp.value)||0;
+    });
+    return out;
+  }
+  function renderDays(){
+    var dEl = document.getElementById("dDate");
+    if(!dEl) return;
+    if(!dEl.value) dEl.value = todayStr();
+    var d = dEl.value;
+    var rec = getDay(d);
+    var box = document.getElementById("dInputs");
+    if(!state.products.length){
+      box.innerHTML = '<div class="empty">还没有产品，先到「③ 售价」页添加产品</div>';
+    }else{
+      box.innerHTML = state.products.map(function(p){
+        var v = (rec && rec.s[p.id] != null) ? rec.s[p.id] : "";
+        return '<div class="field"><label>'+esc(p.name)+'</label>'
+          + '<input type="number" class="d-qty" data-pid="'+p.id+'" step="1" min="0" value="'+v+'" placeholder="计划 '+num(p.daily||0,0)+' 碗"></div>';
+      }).join("");
+    }
+    var st = document.getElementById("dState");
+    if(st) st.textContent = rec ? "这天已记录，可修改后重新保存" : "这天还没记录";
+    refreshDays();
+  }
+  function refreshDays(){
+    if(!document.getElementById("dDate")) return;
+    var sales = curDaySales();
+    var qty = 0, profit = 0;
+    for(var k in sales){ if(!sales.hasOwnProperty(k)) continue;
+      qty += sales[k];
+      var p = state.products.filter(function(x){ return x.id===k; })[0];
+      if(p) profit += sales[k] * unitProfit(p);
+    }
+    var now = document.getElementById("dSumNow");
+    if(now) now.innerHTML = num(qty,0)+' 碗 · 毛利 '+money(profit);
+
+    // 本月累计
+    var m = monthStat(monthPrefix(todayStr()));
+    var planDaily = planDayProfit();
+    document.getElementById("dMonth").innerHTML = [
+      {l:"本月已记账", v:m.days+" 天"},
+      {l:"累计实际销量", v:num(m.qty,0)+" 碗"},
+      {l:"累计实际毛利", v:money0(m.profit)},
+      {l:"vs 计划", v:(m.delta>=0?"+":"")+money0(m.delta), cls:m.delta<0?"bad":"good"}
+    ].map(function(i){
+      return '<div class="sum-item"><div class="s-l">'+i.l+'</div><div class="s-v"'+(i.cls? ' style="color:var(--'+(i.cls==="bad"?"berry":"accent")+')"':'')+'>'+i.v+'</div>'
+        + (i.l==="vs 计划" ? '<div class="s-sub">计划每天 '+money(planDaily)+'</div>' : '')+'</div>';
+    }).join("");
+
+    var note;
+    if(!state.days.length){
+      note = '还没有任何记录。先选今天的日期，填上实际卖出的碗数，点「保存今天」。记满一个月就能看出哪些天、哪些产品偏离计划。';
+    }else if(m.days < 3){
+      note = '才记了 '+m.days+' 天，样本还太少，先看趋势就好。';
+    }else{
+      note = '本月已记 <span class="hl">'+m.days+'</span> 天，共卖出 <span class="hl">'+num(m.qty,0)+'</span> 碗，'
+        + '实际毛利 <span class="hl">'+money0(m.profit)+'</span>，比计划 <span class="hl '+(m.delta<0?"":"ok")+'">'+(m.delta>=0?"+":"")+money0(m.delta)+'</span>。'
+        + '注：历史毛利按<b>当前</b>的原料价与售价估算，涨价前的记录会略有偏差。';
+    }
+    document.getElementById("dNote").innerHTML = note;
+
+    // 最近 14 天柱状（按日历，没记录的算 0）
+    var labels = [], vals = [];
+    for(var i=13;i>=0;i--){
+      var dt = new Date(); dt.setDate(dt.getDate()-i);
+      var ds = dateStr(dt);
+      var r = getDay(ds);
+      labels.push(pad2(dt.getMonth()+1)+"/"+pad2(dt.getDate()));
+      vals.push(r ? dayQty(r) : 0);
+    }
+    var maxv = Math.max.apply(null, vals.concat([1]));
+    document.getElementById("dBar").innerHTML = vals.map(function(v){
+      var h = Math.max(2, Math.round(v/maxv*100));
+      return '<div class="db'+(v===0?" zero":"")+'" style="height:'+h+'%" title="'+v+' 碗"></div>';
+    }).join("");
+    document.getElementById("dBarX").innerHTML = labels.map(function(l){ return '<span>'+l+'</span>'; }).join("");
+
+    // 记录表
+    var tb = document.querySelector("#dTable tbody");
+    var rows = state.days.slice(0, 30).map(function(rec){
+      var q = dayQty(rec), pr = dayProfit(rec), pl = planDayProfit(), df = pr - pl;
+      return '<tr data-d="'+rec.d+'">'
+        + '<td class="c-full" data-label="">'+rec.d+'</td>'
+        + '<td class="num" data-label="碗数">'+num(q,0)+'</td>'
+        + '<td class="num" data-label="实际毛利">'+money(pr)+'</td>'
+        + '<td class="num muted" data-label="计划毛利">'+money(pl)+'</td>'
+        + '<td class="num" data-label="差异" style="color:'+(df<0?"var(--berry)":"var(--accent)")+'">'+(df>=0?"+":"")+money(df)+'</td>'
+        + '<td class="right" data-label=""><button class="mini ghost d-del">×</button></td>'
+        + '</tr>';
+    }).join("");
+    tb.innerHTML = rows || '<tr><td colspan="6" class="empty">暂无记录</td></tr>';
   }
 
   /* ---------- 渲染：敏感度 ---------- */
@@ -1417,22 +1691,25 @@
       var row = document.querySelector('#priceTable tr[data-id="'+p.id+'"]');
       if(row){
         row.children[1].textContent = money(rc);
-        row.children[4].textContent = money(unitProfit(p));
-        row.children[5].textContent = pct(margin(p));
-        row.children[6].textContent = (rc>0?num(p.price/rc,2):"—")+"×";
-        row.children[8].textContent = money(unitProfit(p)*p.daily);
+        var cc = row.querySelector('[data-comm="'+p.id+'"]');
+        if(cc) cc.innerHTML = money(commission(p)) + ' <span class="rate-txt">'+num(rateOf(p),1)+'%</span>';
+        row.children[5].textContent = money(unitProfit(p));
+        row.children[6].textContent = pct(margin(p));
+        row.children[7].textContent = (rc>0?num(p.price/rc,2):"—")+"×";
+        row.children[9].textContent = money(unitProfit(p)*p.daily);
       }
     });
     var t=totals();
     var tf=document.querySelector("#priceTable tfoot");
     if(tf){
-      tf.innerHTML = '<tr><td>合计 / 加权</td><td class="num">'+money(t.avgMatCost)+'</td><td></td><td></td>'
+      tf.innerHTML = '<tr><td>合计 / 加权</td><td class="num">'+money(t.avgMatCost)+'</td><td></td><td></td><td></td>'
         + '<td class="num">'+money(t.avgUnitProfit)+'</td><td class="num">'+pct(t.avgMargin)+'</td><td></td>'
         + '<td class="num">'+num(t.vol/(state.fixed.days||1),1)+'</td>'
         + '<td class="num">'+money(t.gross/(state.fixed.days||1))+'</td></tr>';
     }
     renderBiz();
     renderSim();
+    refreshDays();
   }
 
   function renderAll(){
@@ -1442,7 +1719,9 @@
     renderKpis();
     renderBiz();
     renderSim();
+    renderDays();
     renderLog();
+    renderDemoFlag();
     renderAbKpis();
     renderOverviewNote();
   }
@@ -1621,7 +1900,7 @@
       if(btn.disabled) return;
       try{ save({nosync:true}); }catch(e){}
       if(!syncReady()){
-        setRecipeState("ok", "已保存到本机 · " + hhmm() + "（未开启云端同步，需到「⑦ 数据」里启用）");
+        setRecipeState("ok", "已保存到本机 · " + hhmm() + "（未开启云端同步，需到「数据」页启用）");
         return;
       }
       btn.disabled = true;
@@ -1655,12 +1934,60 @@
       if(e.target.className.indexOf("p-price")>=0){ p.price = parseFloat(e.target.value)||0; refresh(); save(); }
       if(e.target.className.indexOf("p-daily")>=0){ p.daily = parseFloat(e.target.value)||0; refresh(); save(); }
     });
+    pt.addEventListener("change", function(e){
+      if(e.target.className.indexOf("p-ch")<0) return;
+      var tr = e.target.closest("tr[data-id]"); if(!tr) return;
+      var p2 = state.products.filter(function(x){ return x.id===tr.getAttribute("data-id"); })[0]; if(!p2) return;
+      p2.ch = e.target.value;
+      save(); refresh(); renderPrice();
+    });
+
+    // 每日记账
+    document.getElementById("dDate").addEventListener("change", function(){ renderDays(); });
+    document.getElementById("dInputs").addEventListener("input", function(e){
+      if(e.target.className.indexOf("d-qty")>=0) refreshDays();
+    });
+    document.getElementById("dFill").addEventListener("click", function(){
+      state.products.forEach(function(p){
+        var inp = document.querySelector('#dInputs .d-qty[data-pid="'+p.id+'"]');
+        if(inp) inp.value = p.daily||0;
+      });
+      refreshDays();
+    });
+    document.getElementById("dSave").addEventListener("click", function(){
+      var d = document.getElementById("dDate").value || todayStr();
+      var s = curDaySales();
+      if(!Object.keys(s).length){ alert("至少填一个产品的实际销量"); return; }
+      setDaySales(d, s);
+      renderDays(); refresh();
+      var st = document.getElementById("dState");
+      st.className = "save-state ok";
+      st.textContent = "已保存 " + d;
+    });
+    document.querySelector("#dTable").addEventListener("click", function(e){
+      if(e.target.className.indexOf("d-del")<0) return;
+      var tr = e.target.closest("tr[data-d]"); if(!tr) return;
+      var d = tr.getAttribute("data-d");
+      if(!confirm("删除 " + d + " 这天的记录？")) return;
+      delDay(d);
+      renderDays(); refresh();
+    });
 
     // 固定成本
-    var fields = {fRent:"rent", fLabor:"labor", fUtil:"util", fOther:"other", fPack:"pack", fRate:"rate", fDays:"days", fTarget:"target"};
+    var fields = {fRent:"rent", fLabor:"labor", fUtil:"util", fOther:"other", fDep:"dep", fPlat:"plat", fTax:"tax",
+                  fPack:"pack", fRate:"rate", fDays:"days", fTarget:"target"};
     Object.keys(fields).forEach(function(id){
       document.getElementById(id).addEventListener("input", function(){
         state.fixed[fields[id]] = parseFloat(this.value)||0;
+        refresh(); save();
+      });
+    });
+    // 渠道抽佣比例
+    var chFields = {fDine:"dine", fTake:"take", fGroup:"group"};
+    Object.keys(chFields).forEach(function(id){
+      document.getElementById(id).addEventListener("input", function(){
+        if(!state.fixed.chRates) state.fixed.chRates = {};
+        state.fixed.chRates[chFields[id]] = parseFloat(this.value)||0;
         refresh(); save();
       });
     });
@@ -1783,11 +2110,31 @@
     document.getElementById("fLabor").value = state.fixed.labor;
     document.getElementById("fUtil").value = state.fixed.util;
     document.getElementById("fOther").value = state.fixed.other;
+    document.getElementById("fDep").value = state.fixed.dep||0;
+    document.getElementById("fPlat").value = state.fixed.plat||0;
+    document.getElementById("fTax").value = state.fixed.tax||0;
+    var cr = state.fixed.chRates||{};
+    document.getElementById("fDine").value = cr.dine||0;
+    document.getElementById("fTake").value = cr.take||0;
+    document.getElementById("fGroup").value = cr.group||0;
     document.getElementById("fPack").value = state.fixed.pack;
     document.getElementById("fRate").value = state.fixed.rate;
     document.getElementById("fDays").value = state.fixed.days;
     document.getElementById("fTarget").value = state.fixed.target;
   }
+
+  /* ---------- 暴露计算核心，供自动化测试使用（不影响页面） ---------- */
+  try{
+    window.YC = {
+      money:money, num:num, pct:pct, unitCost:unitCost, unitCostIn:unitCostIn, amtInIngUnit:amtInIngUnit,
+      recipeCost:recipeCost, rateOf:rateOf, commission:commission, unitProfit:unitProfit, margin:margin,
+      totals:totals, monthlyUsage:monthlyUsage, beRange:beRange, defaults:defaults, normalize:normalize,
+      dayQty:dayQty, dayProfit:dayProfit, planDayProfit:planDayProfit, monthStat:monthStat,
+      renderAll:renderAll, renderDays:renderDays,
+      getState:function(){ return state; },
+      setState:function(s){ state = normalize(s); }
+    };
+  }catch(e){}
 
   /* ---------- 启动 ---------- */
   state = load();
