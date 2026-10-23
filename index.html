@@ -919,7 +919,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v10 · 1142";
+  var BUILD = "v10 · 1144";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -1251,6 +1251,7 @@
     if(pill) pill.textContent = map[kind]||kind;
     if(el) el.innerHTML = text;
     syncRt.kind = kind;
+    if(kind === "ok") syncRt.at = Date.now();   // 真正「这次同步成功」的时刻，与数据更新时间区分
     renderSrcChip();
   }
 
@@ -1734,7 +1735,7 @@
     if(syncReady()){
       if(syncRt.kind === "err"){ cls="err"; txt="同步失败"; tip="云端同步出错，点开查看原因。"; }
       else if(syncRt.busy){ cls="busy"; txt="同步中…"; tip="正在和云端核对数据。"; }
-      else if(syncRt.lastTs){ cls="ok"; txt="云端 · " + hhmm(syncRt.lastTs); tip="已连接云端，最近一次同步：" + fmtWhen(syncRt.lastTs) + "。点开可查看详情。"; }
+      else if(syncRt.lastTs){ cls="ok"; txt="云端 · " + hhmm(syncRt.at || syncRt.lastTs); tip="已连接云端，最近一次同步：" + fmtWhen(syncRt.at || syncRt.lastTs) + "。点开可查看详情。"; }
       else { cls="idle"; txt="待同步"; tip="已填云端配置，还没成功同步过。"; }
     }else if(state.demo){
       cls="warn"; txt="示例数据"; tip="这是程序自带的示例数据，不是你的真实数据。点开去连接云端。";
