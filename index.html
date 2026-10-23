@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=11">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=11">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=11">
+<link rel="manifest" href="manifest.json?v=12">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=12">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=12">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -356,6 +356,13 @@
     margin-right:7px;vertical-align:middle;position:relative;top:-1px;}
   .ov-row.is-warn .ov-ico{background:var(--berry);}
   .ov-row.is-ok .ov-ico{background:var(--accent);}
+  /* 口径标签：月 / 碗 / 天，避免把月成本读成单价 */
+  .ov-tag{display:inline-block;margin-left:5px;padding:0 4px;border-radius:4px;
+    background:#eef2f6;color:var(--text-3);font-size:10px;font-style:normal;
+    line-height:14px;font-weight:500;letter-spacing:.3px;vertical-align:1px;}
+  .ov-scope{font-size:11.5px;color:var(--text-3);line-height:1.7;margin:-2px 0 8px;}
+  .ov-scope b{color:var(--text-2);font-weight:600;}
+  .ov-sub{display:block;font-size:11px;color:var(--text-3);font-weight:400;line-height:1.6;margin-top:2px;}
 
   /* 移动端折叠按钮：桌面不显示 */
   .ing-toggle{display:none;}
@@ -681,6 +688,7 @@
 
   <section class="card active" data-view="overview">
     <h2>经营体检 <span class="pill">一眼看风险</span></h2>
+    <div class="ov-scope" id="ovScope"></div>
     <div id="overviewNote"></div>
   </section>
 
@@ -942,7 +950,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v11 · 1435";
+  var BUILD = "v12 · 1455";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -1603,17 +1611,33 @@
           ? '<span class="hl">日均差 '+num(be-cur,1)+' 碗才保本</span>'
           : '<span class="hl ok">已超过保本线 '+pct((cur-be)/(cur||1))+'</span>');
 
+    var topTxt = top.length
+      ? top.map(function(x){ return esc(x.name)+' '+money0(x.c); }).join(' · ')
+      : '—';
+
     var rows = [
-      ['盈亏平衡日销量', num(be,1)+' 碗/天（当前 '+num(cur,1)+' 碗）'],
-      ['经营状态', statusLine],
-      ['成本最高的原料', top.length ? top.map(function(x){ return esc(x.name)+' '+money0(x.c); }).join(' · ') : '—'],
-      ['最该关注的产品', worst ? esc(worst.p.name)+' 毛利率 '+pct(worst.m) : '—'],
-      ['单碗平均毛利', money(t.avgUnitProfit)],
-      ['月营业额 / 月净利', money0(t.revenue)+' / '+money0(t.net)]
+      ['盈亏平衡日销量','天', num(be,1)+' 碗/天（当前 '+num(cur,1)+' 碗）'],
+      ['经营状态','天', statusLine],
+      ['月原料花费 TOP3','月', topTxt,
+        '每碗用量 × 月销量 '+num(t.vol,0)+' 碗 × 单价，再取前三名'],
+      ['最该关注的产品','碗', worst ? esc(worst.p.name)+' 毛利率 '+pct(worst.m) : '—'],
+      ['单碗平均毛利','碗', money(t.avgUnitProfit)],
+      ['月营业额 / 月净利','月', money0(t.revenue)+' / '+money0(t.net)]
     ];
     box.innerHTML = rows.map(function(r){
-      return '<div class="ov-row"><span class="ov-l">'+r[0]+'</span><span class="ov-v">'+r[1]+'</span></div>';
+      return '<div class="ov-row"><span class="ov-l">'+r[0]
+        + '<i class="ov-tag">'+r[1]+'</i></span>'
+        + '<span class="ov-v">'+r[2]
+        + (r[3] ? '<em class="ov-sub">'+r[3]+'</em>' : '')
+        + '</span></div>';
     }).join('');
+
+    var scope = document.getElementById("ovScope");
+    if(scope){
+      scope.innerHTML = '金额口径：<i class="ov-tag">月</i>＝日销量 × <b>'+days+'</b> 天'
+        + '（本月共 <b>'+num(t.vol,0)+'</b> 碗） · '
+        + '<i class="ov-tag">碗</i>＝单碗 · <i class="ov-tag">天</i>＝日均';
+    }
   }
 
   /* ---------- 渲染：原料库 ---------- */
