@@ -8,9 +8,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=9">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=9">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=9">
+<link rel="manifest" href="manifest.json?v=10">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=10">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=10">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -165,7 +165,27 @@
   .mix-d summary::before{content:"\25B8";font-size:10px;transition:transform .15s;}
   .mix-d[open] summary::before{transform:rotate(90deg);}
   .mix-d summary:hover{color:var(--accent);}
-  .demo-flag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:999px;background:#fff4e5;color:#a35b00;border:1px solid #ffd9a8;vertical-align:middle;}
+  .src-chip{display:inline-block;vertical-align:middle;margin-left:6px;
+    font-size:10.5px;font-weight:600;letter-spacing:.2px;
+    padding:2px 8px;border-radius:999px;white-space:nowrap;cursor:pointer;
+    font-variant-numeric:tabular-nums;border:1px solid transparent;
+    background:#f1f4f7;color:var(--text-2);border-color:#e1e7ee;}
+  .src-chip:hover{filter:brightness(.97);}
+  .src-chip.warn{background:#fff4e5;color:#a35b00;border-color:#ffd9a8;}
+  .src-chip.ok{background:rgba(13,148,136,.10);color:#0b7d72;border-color:rgba(13,148,136,.26);}
+  .src-chip.err{background:var(--berry-soft);color:#b3123a;border-color:#f4d0da;}
+  .src-chip.busy{background:#eef2ff;color:#3b4fd8;border-color:#d5dcff;}
+  .firstrun{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:#fff8ec;border:1px solid #ffdfae;border-radius:10px;
+    padding:11px 13px;margin:0 0 12px;font-size:13px;color:#8a5200;line-height:1.5;}
+  .firstrun b{color:#7a4400;}
+  .firstrun button{margin-left:auto;flex:0 0 auto;}
+  .wxtip{display:flex;align-items:flex-start;gap:10px;
+    background:#eef4ff;border:1px solid #cfdcff;border-radius:10px;
+    padding:11px 13px;margin:0 0 12px;font-size:12.5px;color:#26417a;line-height:1.55;}
+  .wxtip b{color:#16305f;}
+  .wxtip .wx-x{margin-left:auto;flex:0 0 auto;border:none;background:transparent;color:#5a74ab;
+    font-size:16px;line-height:1;padding:2px 4px;cursor:pointer;}
   .d-top{display:flex;gap:12px;align-items:flex-end;margin-bottom:10px;}
   .d-top .field{flex:1 1 auto;margin:0;min-width:0;}
   .d-sum{flex:0 0 auto;text-align:right;font-size:11.5px;color:var(--text-3);line-height:1.3;}
@@ -622,7 +642,7 @@
 
   <header class="appbar">
     <div class="ab-top">
-      <h1>希腊酸奶 · 成本利润<span class="vtag" id="vtag">v2</span><span class="demo-flag" id="demoFlag" style="display:none">示例数据</span></h1>
+      <h1>希腊酸奶 · 成本利润<span class="vtag" id="vtag">v2</span><button type="button" class="src-chip" id="srcChip" style="display:none">仅本机</button></h1>
       <div class="ab-kpis" id="abKpis"></div>
     </div>
     <nav class="tabs" id="tabs">
@@ -636,6 +656,16 @@
       <button class="tab" data-tab="data">数据</button>
     </nav>
   </header>
+
+  <div class="wxtip" id="wxTip" style="display:none">
+    <span>你现在是在<b>微信内置浏览器</b>里打开，它的存储和 Chrome 互不相通，所以这里看不到你电脑上的数据，「添加到桌面」的图标也容易打不开。点右上角 <b>⋯</b> → <b>在浏览器打开</b>，再用 Chrome 菜单里的「添加到主屏幕」。</span>
+    <button type="button" class="wx-x" id="wxTipX" title="知道了">✕</button>
+  </div>
+
+  <div class="firstrun" id="firstRun" style="display:none">
+    <span>⚠️ 你现在看到的是<b>程序自带的示例数据</b>，不是你的真实账目。多台设备要看到同一份数据，需要连一次云端。</span>
+    <button type="button" class="mini" id="btnGoSync">去连接云端</button>
+  </div>
 
   <div class="kpis active" id="kpis" data-view="overview"></div>
 
@@ -889,7 +919,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v9 · 1124";
+  var BUILD = "v10 · 1142";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -1189,7 +1219,7 @@
   /* ---------- 云端同步：一份 JSON 存在 GitHub 私有仓库里 ---------- */
   var SYNC_KEY = "yogurt-sync-v1";
   var syncCfg = {on:false, repo:"", token:"", path:"yogurt-data.json", branch:"main"};
-  var syncRt  = {sha:null, lastTs:0, timer:null, busy:false, busyAt:0, dirty:false, lastCheck:0};
+  var syncRt  = {sha:null, lastTs:0, timer:null, busy:false, busyAt:0, dirty:false, lastCheck:0, kind:"off"};
 
   (function(){
     try{
@@ -1220,6 +1250,8 @@
     var map = {off:"未开启", ok:"已同步", busy:"同步中", err:"同步异常", wait:"待上传"};
     if(pill) pill.textContent = map[kind]||kind;
     if(el) el.innerHTML = text;
+    syncRt.kind = kind;
+    renderSrcChip();
   }
 
   function ghFetch(url, opts){
@@ -1693,10 +1725,49 @@
     }
   }
 
-  /* ---------- 示例数据角标：改动过就消失 ---------- */
-  function renderDemoFlag(){
-    var el = document.getElementById("demoFlag");
-    if(el) el.style.display = state.demo ? "inline-block" : "none";
+  /* ---------- 数据来源指示器：一眼看出看到的是谁的数据 ---------- */
+  function renderDemoFlag(){ renderSrcChip(); }
+  function renderSrcChip(){
+    var el = document.getElementById("srcChip");
+    if(!el) return;
+    var cls = "idle", txt = "仅本机", tip = "数据只存在这台设备的浏览器里，没有连接云端。";
+    if(syncReady()){
+      if(syncRt.kind === "err"){ cls="err"; txt="同步失败"; tip="云端同步出错，点开查看原因。"; }
+      else if(syncRt.busy){ cls="busy"; txt="同步中…"; tip="正在和云端核对数据。"; }
+      else if(syncRt.lastTs){ cls="ok"; txt="云端 · " + hhmm(syncRt.lastTs); tip="已连接云端，最近一次同步：" + fmtWhen(syncRt.lastTs) + "。点开可查看详情。"; }
+      else { cls="idle"; txt="待同步"; tip="已填云端配置，还没成功同步过。"; }
+    }else if(state.demo){
+      cls="warn"; txt="示例数据"; tip="这是程序自带的示例数据，不是你的真实数据。点开去连接云端。";
+    }else{
+      cls="idle"; txt="仅本机"; tip="数据只存在这台设备的浏览器里。点开去连接云端，实现多设备共用。";
+    }
+    el.className = "src-chip " + cls;
+    el.textContent = txt;
+    el.title = tip;
+    el.style.display = "";
+  }
+  function hhmm(ts){
+    var d = new Date(ts);
+    return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  }
+  /* 示例数据 + 未连云端 → 顶部横幅提醒，避免把示例数字当成自己的账 */
+  function renderFirstRun(){
+    var box = document.getElementById("firstRun");
+    if(box){
+      // 微信里已经有更重要的换浏览器提示，就不再叠一条
+      var show = !!state.demo && !syncReady() && curTab !== "data" && !inAppBrowser();
+      box.style.display = show ? "" : "none";
+    }
+    renderWxTip();
+  }
+  function inAppBrowser(){ return /MicroMessenger|QQ\/|Weibo/i.test(navigator.userAgent||""); }
+  /* 微信/QQ 内置浏览器：存储独立、桌面图标易失效，直接提示换浏览器 */
+  function renderWxTip(){
+    var box = document.getElementById("wxTip");
+    if(!box) return;
+    var offd = false;
+    try{ offd = localStorage.getItem("yogurt-wxtip") === "1"; }catch(e){}
+    box.style.display = (inAppBrowser() && !offd) ? "flex" : "none";
   }
 
   /* ---------- 渲染：每日记账 ---------- */
@@ -1957,14 +2028,17 @@
     renderDays();
     renderLog();
     renderDemoFlag();
+    renderFirstRun();
     renderAbKpis();
     renderOverviewNote();
   }
 
   /* ---------- 模块切换 ---------- */
   var TABS = ["overview","ing","recipe","price","biz","sim","log","data"];
+  var curTab = "overview";
   function showTab(name){
     if(TABS.indexOf(name)<0) name = "overview";
+    curTab = name;
     TABS.forEach(function(t){
       var on = (t===name);
       var views = document.querySelectorAll('[data-view="'+t+'"]');
@@ -1980,10 +2054,32 @@
       nav.scrollLeft = Math.max(0, act.offsetLeft - (nav.clientWidth - act.offsetWidth)/2);
     }
     if(window.scrollTo) window.scrollTo(0,0);
+    renderFirstRun();
   }
 
   /* ---------- 事件绑定 ---------- */
   function bind(){
+    // 顶栏数据来源角标 → 直达同步页
+    var chip = document.getElementById("srcChip");
+    if(chip) chip.addEventListener("click", function(){
+      showTab("data");
+      // 没连云端时把「三步开启」直接撑开，省得再点一次
+      var sb = document.getElementById("setupBox");
+      if(sb && !syncReady()) sb.open = true;
+    });
+    var gs = document.getElementById("btnGoSync");
+    if(gs) gs.addEventListener("click", function(){
+      showTab("data");
+      var sb = document.getElementById("setupBox");
+      if(sb) sb.open = true;
+    });
+    var wxx = document.getElementById("wxTipX");
+    if(wxx) wxx.addEventListener("click", function(){
+      var b = document.getElementById("wxTip");
+      if(b) b.style.display = "none";
+      try{ localStorage.setItem("yogurt-wxtip","1"); }catch(e){}
+    });
+
     // 原料库
     var priceEditFrom = null;
     var ingTable = document.getElementById("ingTable");
