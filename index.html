@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=22">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=22">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=22">
+<link rel="manifest" href="manifest.json?v=23">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=23">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=23">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -130,9 +130,12 @@
   /* 配方页：按分类（酸奶碗 / 酸奶昔 / 三明治）分组 */
   .pgroup{margin-bottom:8px;}
   .pgroup:last-child{margin-bottom:0;}
-  .pg-head{display:flex;align-items:center;gap:8px;padding:2px 0 9px;}
-  .pg-head .pg-title{font-size:14px;font-weight:700;color:var(--text);letter-spacing:.2px;}
-  .pg-head .pg-n{font-size:11.5px;color:var(--text-3);background:#f2f5f8;border-radius:6px;padding:2px 7px;}
+  .pg-head{display:flex;align-items:center;gap:8px;padding:2px 0 10px;}
+  /* v23：分组标题加重（色条 + 800 字重），一眼能看出分了几类 */
+  .pg-head .pg-title{display:inline-flex;align-items:center;gap:7px;font-size:15px;font-weight:800;
+    color:var(--text);letter-spacing:.2px;line-height:1.3;}
+  .pg-head .pg-title::before{content:"";flex:0 0 auto;width:3px;height:15px;border-radius:2px;background:var(--accent);}
+  .pg-head .pg-n{font-size:12px;font-weight:600;color:var(--text-2);background:#eef2f6;border-radius:999px;padding:2px 8px;}
   .pg-head .pg-add{margin-left:auto;font-size:12px;padding:4px 10px;}
   .p-catrow{display:flex;align-items:center;gap:7px;padding:0 0 9px;font-size:12px;color:var(--text-3);flex-wrap:nowrap;}
   .p-catrow select{padding:4px 7px;border:1px solid #e0e6ed;border-radius:8px;font-size:12.5px;
@@ -150,9 +153,10 @@
   input.f-name.dup,input.p-name.dup{border-color:#e0a3a3 !important;background:#fff7f7 !important;}
   @keyframes dupFlash{0%,100%{box-shadow:none}15%,55%{box-shadow:0 0 0 3px rgba(224,163,163,.5)}}
   .flash{animation:dupFlash 1.5s ease;}
-  /* 原料库：按分类分组的小标题行 */
-  #ingTable tr.cat-head td{background:#f6f9fa;color:var(--text-2);font-size:12.5px;font-weight:700;
-    padding:7px 10px;letter-spacing:.2px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+  /* 原料库：按分类分组的小标题行（v23 加重：色条 + 更深字色） */
+  #ingTable tr.cat-head td{background:#f4f8f9;color:var(--text);font-size:13px;font-weight:800;
+    padding:7px 10px;letter-spacing:.2px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    border-left:3px solid var(--accent);}
   #ingTable tbody tr.cat-head:first-child td{border-top:none;}
   #ingTable tr.cat-head td::before{display:none !important;}
   .prod{border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;background:#fff;
@@ -670,8 +674,8 @@
     #ingTable tbody tr.cat-head{display:block;margin:12px 0 6px;padding:0;
       border:none;background:transparent;box-shadow:none;border-radius:0;}
     #ingTable tbody tr.cat-head:first-child{margin-top:2px;}
-    #ingTable tbody tr.cat-head td{background:#f1f5f7;border:1px solid var(--line);border-radius:9px;
-      padding:6px 10px !important;font-size:12.5px;font-weight:700;color:var(--text-2);}
+    #ingTable tbody tr.cat-head td{background:#f1f5f7;border:1px solid var(--line);border-left:3px solid var(--accent);
+      border-radius:9px;padding:6px 10px !important;font-size:13px;font-weight:800;color:var(--text);}
     .cards tfoot tr{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;
       border:none;padding:0;margin-top:2px;background:transparent;}
     .cards tfoot td{border:none !important;padding:0 !important;text-align:left !important;}
@@ -1128,7 +1132,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v22 · 1944";
+  var BUILD = "v23 · 2000";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
