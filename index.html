@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=16">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=16">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=16">
+<link rel="manifest" href="manifest.json?v=17">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=17">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=17">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -168,7 +168,7 @@
   .mix-d summary::before{content:"\25B8";font-size:10px;transition:transform .15s;}
   .mix-d[open] summary::before{transform:rotate(90deg);}
   .mix-d summary:hover{color:var(--accent);}
-  /* 基底（自制半成品）卡片 */
+  /* 自制（半成品）卡片 */
   .prod.bcard .p-head{grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"name meta del";}
   .b-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;padding:4px 0 8px;}
   .b-form label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--text-3);}
@@ -720,7 +720,7 @@
     <nav class="tabs" id="tabs">
       <button class="tab active" data-tab="overview">概览</button>
       <button class="tab" data-tab="ing">原料</button>
-      <button class="tab" data-tab="base">基底</button>
+      <button class="tab" data-tab="base" title="自制半成品：酸奶底、果酱、糖浆、格兰诺拉…">自制</button>
       <button class="tab" data-tab="recipe">配方</button>
       <button class="tab" data-tab="price">售价</button>
       <button class="tab" data-tab="biz">经营</button>
@@ -794,13 +794,13 @@
     </details>
   </section>
 
-  <!-- 基底库 -->
+  <!-- 自制库 -->
   <section class="card" data-view="base">
-    <h2>② 基底库 <span class="pill">一锅一锅做的半成品</span></h2>
-    <p class="desc">自制酸奶底、希腊酸奶、格兰诺拉这类「先做一批、再按克用」的半成品，单独在这里录。填投料 + 每批产出量，自动算出品率和每克成本；在配方里就能像原料一样直接取用。投料也是打字搜索，不用在长列表里翻。</p>
+    <h2>② 自制库 <span class="pill">一锅一锅做的半成品</span></h2>
+    <p class="desc">自制酸奶底、希腊酸奶、果酱、糖浆、格兰诺拉这类「先做一批、再按克用」的东西，单独在这里录。填投料 + 每批产出量，自动算出品率和每克成本；在配方里就能像原料一样直接取用。投料也是打字搜索，不用在长列表里翻。</p>
     <div class="prod-grid" id="baseGrid"></div>
     <div class="toolbar" style="margin-top:14px;margin-bottom:0">
-      <button id="btnAddBase">+ 新增基底</button>
+      <button id="btnAddBase">+ 新增自制</button>
       <button id="btnSaveBase" class="primary">保存并同步</button>
       <span id="baseState" class="save-state">改动会自动存本机；点「保存并同步」可立刻上传到云端</span>
     </div>
@@ -810,7 +810,7 @@
         投料总量 = 各行用量折算成 g 后相加（按「个」投料的会乘上「每件≈」的克数）。<br>
         出品率 = 每批产出量 ÷ 投料总量。5L 牛奶出 4.6kg 酸奶，就是 92%，损耗已经摊进单价了。<br>
         每批总成本 = 投料成本 + 其它耗材（菌种、滤网等没进原料库的）。<br>
-        单位成本 = 每批总成本 ÷ 每批产出量。产品用了基底，用量会自动折回牛奶、菌种等原料上，采购量和涨价模拟都按这个算。
+        单位成本 = 每批总成本 ÷ 每批产出量。产品用了自制半成品，用量会自动折回牛奶、菌种等原料上，采购量和涨价模拟都按这个算。
       </div>
     </details>
   </section>
@@ -1053,7 +1053,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v16 · 1550";
+  var BUILD = "v17 · 1759";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -1063,7 +1063,7 @@
     other:{name:"其他配料",cls:"other"}
   };
   var COLORS = ["#0d9488","#2563eb","#e11d48","#f59e0b","#7c3aed","#0891b2","#65a30d","#db2777","#ea580c","#4f46e5","#059669","#a16207"];
-  var BASE_COLOR = "#ba7517";   // 基底在成本条里的颜色
+  var BASE_COLOR = "#ba7517";   // 自制在成本条里的颜色
 
   var state = null;
   var ingOpen = {};   // 窄屏下哪些原料行处于展开态（仅界面状态，不写盘）
@@ -1147,22 +1147,22 @@
     return uc;
   }
 
-  /* ---------- 基底（自制半成品，介于原料和产品之间） ---------- */
+  /* ---------- 自制（半成品，介于原料和产品之间） ---------- */
   function baseById(id){
     for(var i=0;i<(state.bases||[]).length;i++){ if(state.bases[i].id===id) return state.bases[i]; }
     return null;
   }
-  // 配方行指向的是原料还是基底（兼容老数据只写 ingId 的情况）
+  // 配方行指向的是原料还是自制（兼容老数据只写 ingId 的情况）
   function rowKind(r){ return r && r.kind === "base" ? "base" : "ing"; }
   function rowRefId(r){ return r ? (r.refId != null ? r.refId : r.ingId) : null; }
   function rowIsBase(r){ return rowKind(r) === "base"; }
-  // 该行的"计价单位"：原料用它自己的单位，基底统一用 g/ml
+  // 该行的"计价单位"：原料用它自己的单位，自制统一用 g/ml
   function rowUnit(r){
     if(rowIsBase(r)){ var b = baseById(rowRefId(r)); return (b && b.unit) || "g"; }
     var ing = ingById(rowRefId(r)); return (ing && ing.unit) || "g";
   }
   function rowName(r){
-    if(rowIsBase(r)){ var b = baseById(rowRefId(r)); return b ? b.name : "（已删除的基底）"; }
+    if(rowIsBase(r)){ var b = baseById(rowRefId(r)); return b ? b.name : "（已删除的自制项）"; }
     var ing = ingById(rowRefId(r)); return ing ? ing.name : "（已删除的原料）";
   }
   // 下拉值形如 "ing:i3" / "base:b1"，返回它对应的计量单位
@@ -1186,7 +1186,7 @@
     if(u === "个") return a * ((+ing.eachG)||0);
     return 0;
   }
-  // 一批基底的核算：投料成本 + 其它耗材 → 摊到产出量上
+  // 一批自制的核算：投料成本 + 其它耗材 → 摊到产出量上
   function baseBatch(b){
     var mat=0, inG=0, rows=[];
     (b.recipe||[]).forEach(function(r){
@@ -1207,7 +1207,7 @@
     };
   }
   function baseUnitCost(b){ return baseBatch(b).unit; }
-  // 每一行（原料或基底）的单位价格与计价数量
+  // 每一行（原料或自制）的单位价格与计价数量
   function rowUnitCost(r){
     if(rowIsBase(r)){ var b = baseById(rowRefId(r)); return b ? baseUnitCost(b) : 0; }
     var ing = ingById(rowRefId(r)); return ing ? unitCost(ing) : 0;
@@ -1217,7 +1217,7 @@
     var ing = ingById(rowRefId(r));
     return ing ? unitCostIn(ing, r.u || ing.unit) : 0;
   }
-  // 换算到计价单位的数量（基底本身就是 g/ml，直接用）
+  // 换算到计价单位的数量（自制本身就是 g/ml，直接用）
   function rowAmt(r){
     if(rowIsBase(r)) return (+r.amount)||0;
     return amtInIngUnit(r);
@@ -1225,7 +1225,7 @@
   function rowCost(r){
     return rowAmt(r) * rowUnitCost(r);
   }
-  // 1 单位基底里含多少某原料，用于把用量拆回原料（采购量才准）
+  // 1 单位自制里含多少某原料，用于把用量拆回原料（采购量才准）
   function baseIngPerUnit(b, ingId){
     var bb = baseBatch(b), out = bb.out;
     if(out <= 0) return 0;
@@ -1298,7 +1298,7 @@
     };
   }
 
-  // 原料月用量：产品里直接用的原料 + 通过基底间接消耗的原料（拆回原料，采购量才准）
+  // 原料月用量：产品里直接用的原料 + 通过自制间接消耗的原料（拆回原料，采购量才准）
   function monthlyUsage(){
     var map={};
     function add(id, n){ if(!id) return; if(map[id]==null) map[id]=0; map[id]+=n; }
@@ -1308,7 +1308,7 @@
         var r=p.recipe[j];
         if(rowIsBase(r)){
           var b = baseById(rowRefId(r)); if(!b) continue;
-          var amt = rowAmt(r) * v;                 // 这个月要用多少 g 基底
+          var amt = rowAmt(r) * v;                 // 这个月要用多少 g 自制
           (b.recipe||[]).forEach(function(br){
             var ingId = br.ingId != null ? br.ingId : br.refId;
             add(ingId, amt * baseIngPerUnit(b, ingId));
@@ -1417,7 +1417,7 @@
     // 兼容旧数据：配方行补 id、原料补 eachG
     s.ingredients.forEach(function(i){ if(i.eachG==null) i.eachG = 0; });
     s.products.forEach(function(p){ (p.recipe||[]).forEach(function(r){ if(!r.id) r.id = uid("r"); }); });
-    // 基底（自制半成品）：v14 新增，老数据没有这个字段
+    // 自制（半成品）：v14 新增，老数据没有这个字段
     s.bases = Array.isArray(s.bases) ? s.bases : [];
     s.bases.forEach(function(b){
       if(!b.id) b.id = uid("b");
@@ -2101,14 +2101,14 @@
     return '<span data-utext="'+ing.id+'">'+(ing.unit||"g")+'</span>';
   }
 
-  /* ---------- 渲染：基底库 ---------- */
+  /* ---------- 渲染：自制库 ---------- */
   function renderBases(){
     var grid = document.getElementById("baseGrid");
     if(!grid) return;
     var bases = state.bases || [];
     if(!bases.length){
-      grid.innerHTML = '<div class="b-empty">还没有基底。点下方「新增基底」，把自制酸奶底、希腊酸奶这类'
-        + '<b>先做一批再按克用</b>的半成品录进来。<br>'
+      grid.innerHTML = '<div class="b-empty">还没有自制半成品。点下方「新增自制」，把酸奶底、希腊酸奶、果酱、糖浆、格兰诺拉这类'
+        + '<b>先做一批再按克用</b>的东西录进来。<br>'
         + '如果你之前把它们当原料记在「① 原料库」里，建议在这里重建一遍 —— 这样牛奶涨价多少、出品率掉到多少，都能直接看出来。</div>';
       return;
     }
@@ -2132,12 +2132,12 @@
       var unitTxt = bb.out>0 ? "¥"+num(bb.unit, bb.unit<1?4:2)+"/"+esc(b.unit||"g") : "待填产出量";
       return '<div class="prod bcard open" data-id="'+b.id+'">'
         + '<div class="p-head">'
-        +   '<input type="text" class="p-name b-name" value="'+esc(b.name)+'" aria-label="基底名称">'
+        +   '<input type="text" class="p-name b-name" value="'+esc(b.name)+'" aria-label="自制名称">'
         +   '<span class="p-meta">'
         +     '<span>单位成本<b data-bunit-h="'+b.id+'"> '+esc(unitTxt)+'</b></span>'
         +     '<span class="profit">出品率<b class="'+ylCls.trim()+'" data-byl="'+b.id+'"> '+esc(ylTxt)+'</b></span>'
         +   '</span>'
-        +   '<button type="button" class="del-p del-b" aria-label="删除基底" title="删除基底">&times;</button>'
+        +   '<button type="button" class="del-p del-b" aria-label="删除自制" title="删除自制">&times;</button>'
         + '</div>'
         + '<div class="p-body">'
         +   '<div class="b-form">'
@@ -2170,7 +2170,7 @@
     });
   }
 
-  // 基底卡片内的派生数值（改投料/产出量后不整页重绘，直接改数字）
+  // 自制卡片内的派生数值（改投料/产出量后不整页重绘，直接改数字）
   function refreshBaseDerived(id){
     var b = baseById(id); if(!b) return;
     var bb = baseBatch(b);
@@ -2209,12 +2209,12 @@
       }).join("");
       var legend = rows.map(function(r){
         return '<span><i style="background:'+rowColor(r)+'"></i>'+esc(r.name)
-          + (r.isBase ? '<span class="tag-base">基底</span>' : '') + ' ' + money(r.cost)+'</span>';
+          + (r.isBase ? '<span class="tag-base">自制</span>' : '') + ' ' + money(r.cost)+'</span>';
       }).join("");
 
       var recipeRows = p.recipe.map(function(r){
         var isB = rowIsBase(r);
-        var badge = isB ? '<span class="tag-base">基底</span>' : '';
+        var badge = isB ? '<span class="tag-base">自制</span>' : '';
         var nm = esc(rowName(r));
         var amtCell;
         if(isB){
@@ -2266,7 +2266,7 @@
         +   '</div>'
         + '</div></div>';
     }).join("");
-    // 「加入配方」输入框的占位符跟随所选项单位（原料或基底）
+    // 「加入配方」输入框的占位符跟随所选项单位（原料或自制）
     Array.prototype.forEach.call(grid.querySelectorAll(".prod"), function(card){
       var sel = card.querySelector(".add-sel"), amt = card.querySelector(".add-amt");
       if(!sel || !amt) return;
@@ -2559,16 +2559,16 @@
               (margin(p)*100).toFixed(1)+"%", (priceOf(p) - up).toFixed(2)];
     })));
     lines.push("");
-    lines.push("【基底库（自制半成品）】");
+    lines.push("【自制半成品库】");
     if((state.bases||[]).length){
-      lines.push(csvRows([["基底名称","投料总量(g)","每批产出(g)","出品率%","投料成本(元)","其它耗材(元)","每批总成本(元)","单位成本(元/g)","备注"]]));
+      lines.push(csvRows([["自制名称","投料总量(g)","每批产出(g)","出品率%","投料成本(元)","其它耗材(元)","每批总成本(元)","单位成本(元/g)","备注"]]));
       state.bases.forEach(function(b){
         var bb = baseBatch(b);
         lines.push(csvRows([[b.name, bb.inG.toFixed(1), bb.out.toFixed(1), (bb.yieldRate*100).toFixed(1),
           bb.mat.toFixed(2), bb.supplies.toFixed(2), bb.total.toFixed(2), num(bb.unit, bb.unit<1?4:2), b.note||""]]));
       });
       lines.push("");
-      lines.push(csvRows([["基底投料明细","原料","用量","单位","该项成本(元)"]]));
+      lines.push(csvRows([["自制投料明细","原料","用量","单位","该项成本(元)"]]));
       state.bases.forEach(function(b){
         (b.recipe||[]).forEach(function(r){
           var ing = ingById(r.ingId != null ? r.ingId : r.refId);
@@ -2578,7 +2578,7 @@
         });
       });
     }else{
-      lines.push(csvRows([["（还没有录入基底）"]]));
+      lines.push(csvRows([["（还没有录入自制半成品）"]]));
     }
     lines.push("");
     lines.push("【配方明细】");
@@ -2587,7 +2587,7 @@
       (p.recipe||[]).forEach(function(r){
         if(rowIsBase(r)){
           var b = baseById(rowRefId(r)); if(!b) return;
-          lines.push(csvRows([[p.name, b.name, "基底", r.amount||0, b.unit||"g", rowCost(r).toFixed(4)]]));
+          lines.push(csvRows([[p.name, b.name, "自制", r.amount||0, b.unit||"g", rowCost(r).toFixed(4)]]));
           return;
         }
         var ing = ingById(rowRefId(r));
@@ -2924,8 +2924,8 @@
         var bb = baseBatch(b);
         out.push({
           v:"base:"+b.id, n:b.name, u:b.unit||"g",
-          s:"自制基底 · " + (bb.out>0 ? "¥"+num(bb.unit, bb.unit<1?4:2)+"/"+esc(b.unit||"g") : "待填产出量"),
-          kw:(b.name + " 基底 " + (b.note||"")).toLowerCase()
+          s:"自制半成品 · " + (bb.out>0 ? "¥"+num(bb.unit, bb.unit<1?4:2)+"/"+esc(b.unit||"g") : "待填产出量"),
+          kw:(b.name + " 自制 基底 " + (b.note||"")).toLowerCase()
         });
       });
     }
@@ -2967,7 +2967,7 @@
       if(mode === "all") html += '<div class="ci-g">原料</div>';
       html += c.ings.map(comboItemHtml).join("");
     }
-    if(c.bases.length) html += '<div class="ci-g">自制基底</div>' + c.bases.map(comboItemHtml).join("");
+    if(c.bases.length) html += '<div class="ci-g">自制半成品</div>' + c.bases.map(comboItemHtml).join("");
     if(!html){
       html = '<div class="ci-empty">没找到「'+esc(input.value)+'」。<br>换个关键词，或先去「① 原料库」加一条。</div>';
     }
@@ -3191,7 +3191,7 @@
       var id=tr.getAttribute("data-id");
       var used = state.products.some(function(p){ return p.recipe.some(function(r){ return !rowIsBase(r) && rowRefId(r)===id; }); })
               || (state.bases||[]).some(function(b){ return (b.recipe||[]).some(function(r){ return r.ingId===id; }); });
-      if(used && !confirm("有产品配方或基底正在使用该原料，确定删除？")) return;
+      if(used && !confirm("有产品配方或自制半成品正在使用该原料，确定删除？")) return;
       state.ingredients = state.ingredients.filter(function(i){ return i.id!==id; });
       save(); renderAll();
     });
@@ -3266,7 +3266,7 @@
       if(e.target.className.indexOf("add-btn")>=0){
         var sel = card.querySelector(".add-sel"), amt = card.querySelector(".add-amt");
         var val = comboResolve(sel), amount = parseFloat(amt.value);
-        if(!val){ alert("先在搜索框里点选一个原料或基底（输入名称就能筛选）"); return; }
+        if(!val){ alert("先在搜索框里点选一个原料或自制半成品（输入名称就能筛选）"); return; }
         if(isNaN(amount) || amount<=0){ alert("请填写用量"); return; }
         if(val.indexOf("base:") === 0){
           p.recipe.push({id:uid("r"), kind:"base", refId:val.slice(5), amount:amount, u:"g"});
@@ -3290,10 +3290,10 @@
       if(el && el.scrollIntoView) el.scrollIntoView({block:"center", behavior:"smooth"});
     });
 
-    /* ---------- 基底页交互 ---------- */
+    /* ---------- 自制页交互 ---------- */
     document.getElementById("btnAddBase").addEventListener("click", function(){
-      if(!state.ingredients.length){ alert("先在「① 原料库」里添加原料（牛奶、菌种等），再来录基底。"); return; }
-      var b = {id:uid("b"), name:"新基底", unit:"g", out:0, supplies:0, note:"", recipe:[]};
+      if(!state.ingredients.length){ alert("先在「① 原料库」里添加原料（牛奶、菌种等），再来录自制半成品。"); return; }
+      var b = {id:uid("b"), name:"新自制", unit:"g", out:0, supplies:0, note:"", recipe:[]};
       state.bases.push(b);
       save(); renderAll();
       var el = document.querySelector('#baseGrid .bcard[data-id="'+b.id+'"]');
@@ -3309,7 +3309,7 @@
         }).map(function(p){ return p.name; });
         var msg = usedBy.length
           ? "有产品配方正在用「"+b.name+"」（"+usedBy.join("、")+"），删除后这些行的成本会变成 0。确定删除？"
-          : "删除基底「"+b.name+"」？";
+          : "删除自制半成品「"+b.name+"」？";
         if(!confirm(msg)) return;
         state.bases = state.bases.filter(function(x){ return x.id!==b.id; });
         save(); renderAll(); return;
@@ -3349,7 +3349,7 @@
       else return;
       save();
       refreshBaseDerived(b.id);
-      refresh();   // 产品用了这个基底，单碗成本要跟着变
+      refresh();   // 产品用了这个自制，单碗成本要跟着变
     });
 
     document.getElementById("baseGrid").addEventListener("change", function(e){
@@ -3363,7 +3363,7 @@
       }
     });
 
-    /* 基底页：保存并同步 */
+    /* 自制页：保存并同步 */
     var btnSaveBase = document.getElementById("btnSaveBase");
     btnSaveBase.addEventListener("click", function(){
       var btn = this;
