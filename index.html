@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=12">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=12">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=12">
+<link rel="manifest" href="manifest.json?v=13">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=13">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=13">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -284,6 +284,8 @@
   .frow > em{font-style:normal;font-size:11px;color:var(--text-3);white-space:nowrap;}
 
   .note{font-size:12px;color:var(--text-3);margin-top:10px;line-height:1.6;}
+  .note.warn{color:#8a2c0d;background:var(--warn-soft);border:1px solid #f6d9a8;
+    border-radius:8px;padding:9px 11px;}
   .hl{color:var(--berry);font-weight:600;}
   .hl.ok{color:var(--accent);}
 
@@ -293,6 +295,13 @@
 
   .empty{color:var(--text-3);font-size:13px;padding:10px 0;}
   .muted{color:var(--text-3);}
+  .chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-2);}
+  .chk input{width:15px;height:15px;margin:0;}
+  .snap-row{display:flex;justify-content:space-between;gap:10px;align-items:center;
+    padding:7px 0;border-bottom:1px solid #eff2f5;font-size:12.5px;}
+  .snap-row:last-child{border-bottom:none;}
+  .snap-row .sn{color:var(--text-2);font-variant-numeric:tabular-nums;}
+  .snap-row .sb{flex:0 0 auto;}
   .right{text-align:right;}
   .nowrap{white-space:nowrap;}
 
@@ -683,6 +692,7 @@
     <button type="button" class="mini" id="btnGoSync">去连接云端</button>
     <button type="button" class="mini" id="btnPasteLink">我有同步链接</button>
   </div>
+  <div class="firstrun" id="expBanner" style="display:none"></div>
 
   <div class="kpis active" id="kpis" data-view="overview"></div>
 
@@ -904,6 +914,7 @@
     <div class="grid2">
       <div class="field"><label>仓库（用户名/仓库名）</label><input type="text" id="sRepo" placeholder="xinyechen958-ops/yogurt-data" autocomplete="off"></div>
       <div class="field"><label>token（只存本机浏览器）</label><input type="password" id="sToken" placeholder="github_pat_…" autocomplete="off"></div>
+      <div class="field"><label>token 到期日（选填）</label><input type="date" id="sExp" autocomplete="off" title="填了会在到期前 30 天提醒，免得某天突然同步失败"></div>
     </div>
     <div class="btn-row" style="margin-top:12px">
       <button id="btnSyncSave" class="primary">保存并启用</button>
@@ -911,6 +922,7 @@
       <button id="btnSyncOff" class="ghost">关闭同步</button>
       <button id="btnSyncClear" class="ghost" title="清除本机保存的 token">清除</button>
     </div>
+    <div id="expTip"></div>
     <div id="syncStatus" class="note" style="margin-top:10px">未开启云端同步 —— 数据只存在这台设备的浏览器里。</div>
 
     <div class="linkbox">
@@ -924,6 +936,17 @@
       <input type="text" id="linkBox" placeholder="点「生成同步链接」后显示在这里；也可以把同步链接粘贴到这里，再点「用这条链接恢复数据」" autocomplete="off" spellcheck="false">
       <div class="muted" style="margin-top:7px;font-size:12px">链接只在你自己手里，<code>#</code> 后面的内容不会发给任何服务器。存进手机备忘录即可。<br>顺序很重要：<b>先在存着真实数据的那台设备上开启同步并上传</b>，再把生成的链接拿到别的设备打开。</div>
     </div>
+
+    <div class="linkbox">
+      <div class="lb-title">云端快照 · 覆盖错了还能翻回来</div>
+      <p class="desc" style="margin:4px 0 10px">每次要用这台设备的数据覆盖云端之前，会先把云端现有版本另存一份到仓库的 <code>history/</code> 目录，最多留 30 份。两台设备各改各的也不会丢东西。</p>
+      <div class="btn-row">
+        <button id="btnSnapList">查看快照</button>
+        <button id="btnSnapNow">现在存一份</button>
+        <label class="chk"><input type="checkbox" id="snapOn"> 自动快照</label>
+      </div>
+      <div id="snapBox" class="note"></div>
+    </div>
   </section>
 
   <section class="card" data-view="data">
@@ -932,8 +955,14 @@
     <div class="btn-row">
       <button id="btnExport">导出数据</button>
       <button id="btnImport">导入数据</button>
+      <button id="btnCsv">导出 Excel（CSV）</button>
+      <button id="btnOffline">下载离线副本</button>
       <button id="btnPrint">打印 / 存 PDF</button>
       <button id="btnReset" class="ghost">恢复示例</button>
+    </div>
+    <div class="note" style="margin-top:10px">
+      <b>导出 Excel（CSV）：</b>中文表头的表格，Excel / WPS / 数字表格都能直接打开，含原料、产品、配方明细、固定成本、最近记账 —— 哪天不用这个工具了，数据也带得走。<br>
+      <b>下载离线副本：</b>把当前数据嵌进一份网页文件存到本地，<b>断网、GitHub 打不开时也能看</b>。存进手机文件里当保命副本。
     </div>
     <input type="file" id="fileInput" accept="application/json,.json" style="display:none">
     <div class="note" id="diagInfo" style="margin-top:12px"></div>
@@ -950,7 +979,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v12 · 1455";
+  var BUILD = "v13 · 1502";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -1249,20 +1278,30 @@
 
   /* ---------- 云端同步：一份 JSON 存在 GitHub 私有仓库里 ---------- */
   var SYNC_KEY = "yogurt-sync-v1";
-  var syncCfg = {on:false, repo:"", token:"", path:"yogurt-data.json", branch:"main"};
-  var syncRt  = {sha:null, lastTs:0, timer:null, busy:false, busyAt:0, dirty:false, lastCheck:0, kind:"off"};
+  var syncCfg = {on:false, repo:"", token:"", path:"yogurt-data.json", branch:"main",
+                 snap:true, exp:"", baseTs:0};
+  var syncRt  = {sha:null, lastTs:0, timer:null, busy:false, busyAt:0, dirty:false, lastCheck:0,
+                 kind:"off", lastSnap:0, snaps:[]};
 
   (function(){
     try{
       var raw = localStorage.getItem(SYNC_KEY);
       if(raw){
         var o = JSON.parse(raw);
-        if(o) ["on","repo","token","path","branch"].forEach(function(k){ if(o[k]!=null) syncCfg[k]=o[k]; });
+        if(o) ["on","repo","token","path","branch","snap","exp","baseTs"].forEach(function(k){ if(o[k]!=null) syncCfg[k]=o[k]; });
       }
     }catch(e){}
   })();
   function persistSyncCfg(){ try{ localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg)); }catch(e){} }
   function syncReady(){ return !!(syncCfg.on && syncCfg.repo && syncCfg.token); }
+  /* 基线 = 上次成功同步时两端共同的更新时间。有它才判断得出「云端是不是被别的设备改过」，
+     没有它只能靠时间戳比大小，谁新谁赢 —— 那正是另一台设备的改动被静默覆盖的原因。 */
+  function setBase(ts){
+    syncRt.baseTs = ts || 0;
+    syncCfg.baseTs = syncRt.baseTs;
+    persistSyncCfg();
+  }
+  function baseTs(){ return syncRt.baseTs || syncCfg.baseTs || 0; }
 
   /* ---------- 同步链接：把仓库 + token 写进网址，换设备/换浏览器打开即自动接云端 ----------
      背景：同一个网址在「Chrome 标签页 / 微信内置浏览器 / 桌面图标 App / 另一台电脑」里
@@ -1427,13 +1466,102 @@
     return true;
   }
 
+  /* ---------- 云端快照：覆盖前先把旧版本另存一份，覆盖错了还能拿回来 ---------- */
+  var SNAP_DIR = "history";
+  var SNAP_KEEP = 30;
+  function ghUrl(p){ return "https://api.github.com/repos/" + syncCfg.repo + "/contents/" + p; }
+
+  function snapName(ts){
+    var d = new Date(ts || Date.now());
+    function p(n){ return String(n).padStart(2,"0"); }
+    return SNAP_DIR + "/" + d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + "-"
+         + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + ".json";
+  }
+  async function putFile(path, payload, msg, sha){
+    var body = {message: msg || ("sync " + new Date().toISOString()),
+                content: b64enc(JSON.stringify(payload)), branch: syncCfg.branch};
+    if(sha) body.sha = sha;
+    var r = await ghFetch(ghUrl(path), {method:"PUT", body:JSON.stringify(body)});
+    if(r.status===409 || r.status===422) throw new Error("CONFLICT");
+    if(!r.ok) throw apiErr(r);
+    var j = await r.json();
+    return (j && j.content && j.content.sha) || "";
+  }
+  async function getFile(path){
+    var r = await ghFetch(ghUrl(path) + "?ref=" + encodeURIComponent(syncCfg.branch) + "&t=" + Date.now());
+    if(r.status===404) return null;
+    if(!r.ok) throw apiErr(r);
+    var j = await r.json();
+    if(!j || !j.content) return null;
+    return {sha:j.sha, obj:JSON.parse(b64dec(j.content))};
+  }
+  async function delFile(path, sha, msg){
+    var r = await ghFetch(ghUrl(path), {method:"DELETE",
+      body: JSON.stringify({message:msg||"清理旧快照", sha:sha, branch:syncCfg.branch})});
+    if(!r.ok && r.status!==404 && r.status!==422) throw apiErr(r);
+    return true;
+  }
+  async function listSnaps(){
+    try{
+      var r = await ghFetch(ghUrl(SNAP_DIR) + "?ref=" + encodeURIComponent(syncCfg.branch) + "&t=" + Date.now());
+      if(r.status===404) return [];
+      if(!r.ok) throw apiErr(r);
+      var arr = await r.json();
+      if(!Array.isArray(arr)) return [];
+      return arr.filter(function(f){ return /\.json$/.test(f.name); })
+        .map(function(f){ return {name:f.name, path:f.path, sha:f.sha, size:f.size||0}; })
+        .sort(function(a,b){ return a.name < b.name ? 1 : -1; });   // 新的在前
+    }catch(e){ return []; }
+  }
+  async function cleanSnaps(){
+    try{
+      var list = await listSnaps();
+      if(list.length <= SNAP_KEEP) return;
+      var drop = list.slice(SNAP_KEEP);
+      for(var i=0;i<drop.length;i++){ await delFile(drop[i].path, drop[i].sha); }
+    }catch(e){}
+  }
+  // force=true：危险动作（覆盖/撞车）前必存；否则 10 分钟内只存一次，避免每次编辑都产生一个文件
+  async function snapshotRemote(rem, force){
+    if(!syncCfg.snap || !rem || !rem.data) return false;
+    if(!force && Date.now() - (syncRt.lastSnap||0) < 10*60*1000) return false;
+    try{
+      await putFile(snapName(rem.updatedAt || Date.now()),
+        {schema:1, updatedAt:rem.updatedAt, data:rem.data},
+        "覆盖前快照 " + fmtWhen(rem.updatedAt || Date.now()));
+      syncRt.lastSnap = Date.now();
+      cleanSnaps();
+      return true;
+    }catch(e){ return false; }
+  }
+
   function applyRemote(rem){
     state = normalize(rem.data);
     state.updatedAt = rem.updatedAt || state.updatedAt || Date.now();
     save({nosync:true, keepTs:true, keepDemo:true});
     fillFixed(); renderAll();
     syncRt.lastTs = state.updatedAt;
+    setBase(state.updatedAt);
     setSyncStatus("ok", "已拉取云端最新数据（" + fmtWhen(syncRt.lastTs) + " 的版本）。");
+  }
+
+  /* 决定这次同步该干嘛。核心原则：自动同步绝不替人做「覆盖」的决定。 */
+  function planSync(rem){
+    var localTs = state.updatedAt || 0, remTs = rem.updatedAt || 0, base = baseTs();
+    var remoteChanged = remTs > base + 500;   // 云端在这台设备上次同步之后被改过
+    var localDirty    = localTs > base + 500; // 本机有还没同步上去的改动
+    // 刚恢复快照 / 刚被用户确认覆盖：明确以本机为准，别又被云端拉回去
+    if(syncRt.forcePush){ return {act:"push"}; }
+    if(sigOf(state) === sigOf(rem.data)) return {act:"same", ts:Math.max(localTs, remTs)};
+    if(localTs > remTs + 500){
+      if(localDirty && remoteChanged) return {act:"conflict"};
+      return {act:"push"};
+    }
+    if(remTs > localTs + 500){
+      if(localDirty) return {act:"conflict"};   // 拉取会冲掉本机独有改动，必须人工定
+      return {act:"pull"};
+    }
+    return {act:"ask"};                          // 时间几乎一样但内容不同
   }
 
   function schedulePush(){
@@ -1454,24 +1582,59 @@
     return (h>>>0).toString(36) + ":" + str.length;
   }
 
-  async function pushLocal(){
+  // 保存后的自动上传。关键改动：上传前先问一次云端，确认没有别的设备改过再动手；
+  // 否则宁可什么都不做，也不能把另一台设备的改动盖掉。
+  async function pushLocal(manual){
     if(!syncReady()) return false;
+    if(manual) return syncNow(true);
     if(isBusy()){ syncRt.dirty = true; return false; }   // 不丢改动，标记为待推送
     setBusy(true);
     try{
-      var ts = Math.max(state.updatedAt || 0, Date.now());
-      state.updatedAt = ts;
-      await remotePut({schema:1, updatedAt:ts, data:state});
-      syncRt.lastTs = ts;
-      syncRt.dirty = false;
-      setSyncStatus("ok", "已同步 · 改动已上传（" + dataBrief(state) + "，" + fmtWhen(ts) + "）。");
-      return true;
+      var rem = await remoteGet();
+      if(!rem || !rem.data){
+        if(state.demo){
+          setSyncStatus("err", "云端还没有数据文件，这台设备又只有示例数据 —— 请先在「存着真实数据」的那台设备上开启同步并上传。");
+          return false;
+        }
+        var t0 = Math.max(state.updatedAt || 0, Date.now());
+        state.updatedAt = t0;
+        await remotePut({schema:1, updatedAt:t0, data:state});
+        setBase(t0);
+        syncRt.lastTs = t0; syncRt.dirty = false;
+        setSyncStatus("ok", "已同步 · 云端已建立数据文件（" + dataBrief(state) + "）。");
+        return true;
+      }
+      var plan = planSync(rem);
+      if(plan.act === "same"){
+        setBase(plan.ts); syncRt.dirty = false;
+        setSyncStatus("ok", "已核对 · 两端一致（" + dataBrief(state) + "）。");
+        return true;
+      }
+      if(plan.act === "pull"){ applyRemote(rem); return true; }
+      if(plan.act === "push"){
+        await snapshotRemote(rem, false);
+        var ts = Math.max(state.updatedAt || 0, Date.now());
+        state.updatedAt = ts;
+        await remotePut({schema:1, updatedAt:ts, data:state});
+        setBase(ts);
+        syncRt.lastTs = ts; syncRt.dirty = false; syncRt.forcePush = false;
+        setSyncStatus("ok", "已同步 · 改动已上传（" + dataBrief(state) + "，" + fmtWhen(ts) + "）。");
+        return true;
+      }
+      // conflict / ask：自动同步一律停手
+      var saved = await snapshotRemote(rem, true);
+      syncRt.dirty = true;
+      setSyncStatus("err", "改动还没上传：本机和云端都改过，云端版本"
+        + (saved ? "已存进快照，" : "（快照失败，") + "需要你定。<br>"
+        + "本机 " + dataBrief(state) + "（" + fmtWhen(state.updatedAt) + "）／云端 "
+        + dataBrief(rem.data) + "（" + fmtWhen(rem.updatedAt) + "）。<br>点「立即同步」选择保留哪一边。");
+      return false;
     }catch(e){
       if(String(e.message)==="CONFLICT"){ setBusy(false); return syncNow(false); }
       syncRt.dirty = true;
       setSyncStatus("err", "上传失败：" + e.message + "（数据仍在本机，联网后会自动重试）");
       return false;
-    }finally{ setBusy(false); renderSrcChip(); }
+    }finally{ setBusy(false); syncRt.lastCheck = Date.now(); renderSrcChip(); }
   }
 
   async function syncNow(manual, opts){
@@ -1507,40 +1670,90 @@
       var remBrief = dataBrief(rem.data);
       // 用同步链接在新设备上恢复：本机是空的/示例的，一律以云端为准
       if(opts.forcePull){
+        await snapshotRemote(rem, true);
         applyRemote(rem);
         setSyncStatus("ok", "已按链接恢复云端数据：" + remBrief + "（云端更新于 " + fmtWhen(remTs) + "）。");
         return true;
       }
-      if(sigOf(state) === sigOf(rem.data)){
-        syncRt.lastTs = Math.max(localTs, remTs);
-        syncRt.dirty = false;
+      var plan = planSync(rem);
+      if(plan.act === "same"){
+        setBase(plan.ts);
+        syncRt.lastTs = plan.ts; syncRt.dirty = false;
         setSyncStatus("ok", "已同步 · 两端一致（" + localBrief + "，云端更新于 " + fmtWhen(remTs) + "）。");
         return true;
       }
-      if(localTs > remTs + 500){
-        await remotePut({schema:1, updatedAt:localTs, data:state});
-        syncRt.lastTs = localTs; syncRt.dirty = false;
-        setSyncStatus("ok", "已同步 · 本机数据已上传：本机 " + localBrief + "，云端原有 " + remBrief + "。");
-        return true;
-      }
-      if(remTs > localTs + 500){
+      if(plan.act === "pull"){
         applyRemote(rem);
         setSyncStatus("ok", "已同步 · 已拉取云端数据：" + remBrief + "（" + fmtWhen(remTs) + "），本机原有 " + localBrief + "。");
         return true;
       }
-      // 时间几乎相同但内容不同：必须让人来定，不能静默挑一个
+      if(plan.act === "push"){
+        await snapshotRemote(rem, manual);
+        var ts = Math.max(localTs, Date.now());
+        state.updatedAt = ts;
+        await remotePut({schema:1, updatedAt:ts, data:state});
+        setBase(ts);
+        syncRt.lastTs = ts; syncRt.dirty = false; syncRt.forcePush = false;
+        setSyncStatus("ok", "已同步 · 本机数据已上传：本机 " + localBrief + "，云端原有 " + remBrief + "。");
+        return true;
+      }
+      if(plan.act === "conflict"){
+        if(manual){
+          var takeLocal = confirm("两台设备都改过，你想保留哪一边？\n\n"
+            + "本机 " + localBrief + "（" + fmtWhen(localTs) + "）\n"
+            + "云端 " + remBrief + "（" + fmtWhen(remTs) + "）\n\n"
+            + "【确定】用本机的覆盖云端（云端当前版本会先存一份快照）\n"
+            + "【取消】用云端的（本机这次改动会丢，同样会先存快照）");
+          await snapshotRemote(rem, true);
+          if(takeLocal){
+            var ts2 = Math.max(localTs, Date.now());
+            state.updatedAt = ts2;
+            await remotePut({schema:1, updatedAt:ts2, data:state});
+            setBase(ts2);
+            syncRt.lastTs = ts2; syncRt.dirty = false; syncRt.forcePush = false;
+            setSyncStatus("ok", "已同步 · 已用本机数据覆盖云端（" + localBrief + "），云端原版本已存快照。");
+            return true;
+          }
+          applyRemote(rem);
+          setSyncStatus("ok", "已同步 · 已改用云端数据（" + remBrief + "），本机原版本仍可在快照里找回。");
+          return true;
+        }
+        var saved = await snapshotRemote(rem, true);
+        syncRt.dirty = true;
+        setSyncStatus("err", "两台设备都改过，先不动手 —— 云端版本"
+          + (saved ? "已存进快照，" : "（快照失败，") + "由你定：<br>"
+          + "本机 " + localBrief + "（" + fmtWhen(localTs) + "）<br>"
+          + "云端 " + remBrief + "（" + fmtWhen(remTs) + "）<br>"
+          + "点「立即同步」选择保留哪一边；快照可在下面「云端快照」里随时翻回来。");
+        return false;
+      }
+      // ask：时间几乎一样但内容不同，必须人来定
       var diff = "本机 " + localBrief + "（" + fmtWhen(localTs) + "）\n云端 " + remBrief + "（" + fmtWhen(remTs) + "）";
       var pickRemote = manual ? confirm("本机和云端内容不同，时间又几乎一样：\n\n" + diff + "\n\n【确定】用云端的（本机这次改动会丢）\n【取消】用本机的（覆盖云端）") : false;
-      if(pickRemote){ applyRemote(rem); return true; }
+      if(pickRemote){ await snapshotRemote(rem, true); applyRemote(rem); return true; }
+      if(!manual){
+        syncRt.dirty = true;
+        setSyncStatus("err", "本机和云端内容对不上，等你确认后点「立即同步」。");
+        return false;
+      }
+      await snapshotRemote(rem, true);
       state.updatedAt = Date.now();
       await remotePut({schema:1, updatedAt:state.updatedAt, data:state});
-      syncRt.lastTs = state.updatedAt; syncRt.dirty = false;
+      setBase(state.updatedAt);
+      syncRt.lastTs = state.updatedAt; syncRt.dirty = false; syncRt.forcePush = false;
       setSyncStatus("ok", "已同步 · 已用本机数据覆盖云端（" + localBrief + "）。");
       return true;
     }catch(e){
       syncRt.dirty = true;
-      setSyncStatus("err", "同步失败：" + e.message);
-      if(manual) alert("同步失败：" + e.message);
+      var emsg = e.message || String(e);
+      if(/无效或已过期/.test(emsg)){
+        emsg = "token 无效或已过期。去 GitHub 重新生成一个（只勾 yogurt-data 这个仓库、Contents 读写），"
+             + "粘贴进上面 token 栏再点保存并启用。<b>数据都还在本机和云端，不会丢。</b>";
+      }else if(/权限不足/.test(emsg)){
+        emsg = "token 权限不足：需要在生成时把 Contents 设为 Read and write，并只勾 yogurt-data 这个仓库。";
+      }
+      setSyncStatus("err", "同步失败：" + emsg);
+      if(manual) alert("同步失败：" + (e.message || e));
       return false;
     }finally{
       setBusy(false);
@@ -1876,6 +2089,7 @@
     el.title = tip;
     el.style.display = "";
     renderDiag();
+    renderExpTip();
   }
   function hhmm(ts){
     var d = new Date(ts);
@@ -1892,6 +2106,182 @@
       + " · " + esc(state.demo ? "当前是示例数据" : "本机有真实数据")
       + "<br>存储位置 " + esc((location.origin || "本地文件") + location.pathname)
       + "（换浏览器 / 微信 / 桌面图标 = 换一个互不相通的抽屉，只有连了云端才会一样）";
+  }
+
+  /* ---------- token 到期提醒：到期前 30 天开始催，别等它突然失效 ---------- */
+  function renderExpTip(){
+    var el = document.getElementById("expTip");
+    if(!el) return;
+    var exp = syncCfg.exp || "";
+    if(!syncReady() || !exp){ el.innerHTML = ""; renderExpBanner(-1); return; }
+    var d = new Date(exp + "T00:00:00");
+    if(isNaN(d.getTime())){ el.innerHTML = ""; renderExpBanner(-1); return; }
+    var days = Math.ceil((d.getTime() - Date.now()) / 86400000);
+    if(days > 30){
+      el.innerHTML = '<div class="note">token 到期日 ' + esc(exp) + '，还有 ' + days + ' 天 —— 到期前 30 天会在这里提醒。</div>';
+    }else if(days < 0){
+      el.innerHTML = '<div class="note warn">token 已于 ' + esc(exp) + ' 到期，同步会失败。去 GitHub 重新生成一个（只勾 yogurt-data、Contents 读写），粘贴进上面 token 栏再保存。</div>';
+    }else{
+      el.innerHTML = '<div class="note warn">token 还有 ' + days + ' 天到期（' + esc(exp) + '）。建议现在就换一个，免得某天突然同步不上。</div>';
+    }
+    renderExpBanner(days);
+  }
+  // 快到期时在首屏也挂一条，不用特意进「数据」页才看到
+  function renderExpBanner(days){
+    var box = document.getElementById("expBanner");
+    if(!box) return;
+    if(days == null || days < 0 || days > 30 || !syncReady()){ box.style.display = "none"; return; }
+    box.style.display = "";
+    var txt = (days === 0 ? "token 今天到期" : "token 还有 " + days + " 天到期");
+    box.innerHTML = '<span>🔑 ' + txt + '，到期后手机和电脑就同步不上了。换一个只要两分钟。</span>'
+      + '<button type="button" class="mini" id="btnGoExp">去换 token</button>';
+    var b = document.getElementById("btnGoExp");
+    if(b) b.addEventListener("click", function(){
+      showTab("data");
+      var el = document.getElementById("sToken");
+      if(el){ el.focus(); el.scrollIntoView({block:"center"}); }
+    });
+  }
+
+  /* ---------- 云端快照：列表 + 恢复 ---------- */
+  function snapLabel(name){
+    var m = /(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})\.json$/.exec(name);
+    if(!m) return name;
+    return m[1] + "-" + m[2] + "-" + m[3] + " " + m[4] + ":" + m[5] + ":" + m[6];
+  }
+  function renderSnapList(list){
+    var box = document.getElementById("snapBox");
+    if(!box) return;
+    if(!syncReady()){ box.innerHTML = "开启同步后才能查看云端快照。"; return; }
+    if(!list){ box.innerHTML = "正在读取…"; return; }
+    if(!list.length){ box.innerHTML = "还没有快照。第一次覆盖云端时会自动存一份。"; return; }
+    var shown = list.slice(0, 12);
+    box.innerHTML = "共 " + list.length + " 份（最多保留 30 份，超出自动清理最旧的）："
+      + shown.map(function(f){
+          return '<div class="snap-row"><span class="sn">' + esc(snapLabel(f.name)) + '</span>'
+            + '<span class="sb"><button class="mini" data-snap="' + esc(f.path) + '">恢复</button></span></div>';
+        }).join("");
+    box.querySelectorAll("button[data-snap]").forEach(function(b){
+      b.addEventListener("click", function(){ restoreSnap(b.getAttribute("data-snap")); });
+    });
+  }
+  async function loadSnapList(){
+    renderSnapList(null);
+    var list = await listSnaps();
+    syncRt.snaps = list;
+    renderSnapList(list);
+    return list;
+  }
+  async function restoreSnap(path){
+    var toCloud = syncReady();
+    if(!confirm("用这份快照替换本机现在的数据？\n\n" + (toCloud
+      ? "恢复后会覆盖云端，覆盖前云端当前版本会再存一份快照。"
+      : "（未开同步，只影响这台设备）"))) return;
+    try{
+      var f = await getFile(path);
+      if(!f || !f.obj){ alert("没读到这份快照，可能已被清理。"); return; }
+      state = normalize(f.obj.data);
+      state.updatedAt = Date.now();
+      save({nosync:true, keepTs:true, keepDemo:true});
+      fillFixed(); renderAll();
+      syncRt.forcePush = true;          // 以本机为准推上去，否则会被云端新版本拉回去
+      if(toCloud){
+        setSyncStatus("wait", "快照已恢复到本机，正在上传覆盖云端…");
+        await syncNow(true);
+      }else{
+        setSyncStatus("ok", "快照已恢复到本机（未开同步，仅本机生效）。");
+      }
+    }catch(e){
+      alert("恢复失败：" + e.message);
+    }
+  }
+
+  /* ---------- 离线副本 + CSV 导出：数据能带走，断网也能看 ---------- */
+  function saveFile(name, content, mime){
+    var blob = new Blob([content], {type: mime || "text/plain;charset=utf-8"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1500);
+  }
+  function todayStr(){
+    var d = new Date();
+    function p(n){ return String(n).padStart(2,"0"); }
+    return d.getFullYear() + "-" + p(d.getMonth()+1) + "-" + p(d.getDate());
+  }
+  async function downloadOffline(){
+    var src = "";
+    try{
+      var r = await fetch((location.href || "").split("#")[0], {cache:"reload"});
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      src = await r.text();
+    }catch(e){
+      src = "<!doctype html>\n" + document.documentElement.outerHTML;   // file:// 或跨域时的兜底
+    }
+    if(!src){ alert("没能取到页面源码，请用浏览器打开线上地址再试一次。"); return; }
+    var payload = JSON.stringify(JSON.stringify(state)).replace(/</g, "\\u003c");
+    var inject = "<scr" + "ipt>(function(){try{localStorage.setItem('" + STORE_KEY + "'," + payload
+      + ");}catch(e){}})();</scr" + "ipt>";
+    var out = src.replace(/<head([^>]*)>/i, "<head$1>" + inject);
+    if(out === src) out = src.replace(/<html([^>]*)>/i, "<html$1>" + inject);
+    saveFile("酸奶成本表_离线版_" + todayStr() + ".html", out, "text/html;charset=utf-8");
+  }
+  function csvCell(v){
+    var s = (v == null ? "" : String(v));
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  function csvRows(rows){ return rows.map(function(r){ return r.map(csvCell).join(","); }).join("\r\n"); }
+  function exportCsv(){
+    var lines = [];
+    lines.push("【原料】");
+    lines.push(csvRows([["名称","分类","采购价(元)","采购规格","单位","每件净重(g)","单位成本(元/单位)","备注"]]));
+    lines.push(csvRows(state.ingredients.map(function(i){
+      return [i.name, i.cat||"", i.price, i.size, i.unit, i.eachG||"",
+              (unitCost(i) ? unitCost(i).toFixed(4) : ""), i.note||""];
+    })));
+    lines.push("");
+    lines.push("【产品与定价】");
+    lines.push(csvRows([["产品","售价(元)","日销量(碗)","单碗原料成本(元)","单碗毛利(元)","毛利率","单碗成本合计(元)"]]));
+    lines.push(csvRows(state.products.map(function(p){
+      var rc = recipeCost(p).total;
+      var up = unitProfit(p);
+      return [p.name, priceOf(p), p.daily||0, rc.toFixed(2), up.toFixed(2),
+              (margin(p)*100).toFixed(1)+"%", (priceOf(p) - up).toFixed(2)];
+    })));
+    lines.push("");
+    lines.push("【配方明细】");
+    lines.push(csvRows([["产品","原料","用量","单位","该项成本(元)"]]));
+    state.products.forEach(function(p){
+      (p.recipe||[]).forEach(function(r){
+        var ing = ingById(r.ingId);
+        if(!ing) return;
+        lines.push(csvRows([[p.name, ing.name, r.amount||0, r.u || ing.unit,
+          (amtInIngUnit(r) * unitCost(ing)).toFixed(4)]]));
+      });
+    });
+    lines.push("");
+    lines.push("【固定成本（每月）】");
+    var f = state.fixed || {};
+    lines.push(csvRows([["项目","金额(元/月)"]]));
+    lines.push(csvRows([["房租", f.rent], ["人工", f.labor], ["水电", f.util], ["其他", f.other],
+      ["折旧", f.dep], ["平台费", f.plat], ["税费", f.tax], ["包装", f.pack],
+      ["月营业天数", f.days], ["目标净利", f.target]]));
+    lines.push("");
+    lines.push("【最近记账】");
+    lines.push(csvRows([["日期"].concat(state.products.map(function(p){ return p.name; })).concat(["当天合计(碗)"])]));
+    lines.push(csvRows((state.days||[]).slice(0, 30).map(function(rec){
+      var row = [rec.d];
+      var sum = 0;
+      state.products.forEach(function(p){
+        var q = (rec.s||{})[p.id] || 0;
+        sum += q;
+        row.push(q);
+      });
+      row.push(sum);
+      return row;
+    })));
+    saveFile("酸奶成本表_" + todayStr() + ".csv", "\ufeff" + lines.join("\r\n"), "text/csv;charset=utf-8");
   }
   /* 示例数据 + 未连云端 → 顶部横幅提醒，避免把示例数字当成自己的账 */
   function renderFirstRun(){
@@ -2525,11 +2915,43 @@
     });
     document.getElementById("btnPrint").addEventListener("click", function(){ window.print(); });
 
+    // 导出 Excel（CSV）与离线副本：数据带得走、断网看得到
+    document.getElementById("btnCsv").addEventListener("click", function(){ exportCsv(); });
+    document.getElementById("btnOffline").addEventListener("click", function(){ downloadOffline(); });
+
     // 云端同步
     var sRepoEl = document.getElementById("sRepo");
     var sTokEl  = document.getElementById("sToken");
+    var sExpEl  = document.getElementById("sExp");
+    var snapOnEl = document.getElementById("snapOn");
     if(sRepoEl) sRepoEl.value = syncCfg.repo || "";
     if(sTokEl)  sTokEl.value  = syncCfg.token || "";
+    if(sExpEl){
+      sExpEl.value = syncCfg.exp || "";
+      sExpEl.addEventListener("input", function(){
+        syncCfg.exp = (this.value||"").trim();
+        persistSyncCfg(); renderExpTip();
+      });
+    }
+    if(snapOnEl){
+      snapOnEl.checked = syncCfg.snap !== false;
+      snapOnEl.addEventListener("change", function(){
+        syncCfg.snap = !!this.checked; persistSyncCfg();
+        var b = document.getElementById("snapBox");
+        if(b) b.innerHTML = syncCfg.snap ? "已开启：覆盖云端前自动留档。" : "已关闭：覆盖前不再留档（不建议）。";
+      });
+    }
+    document.getElementById("btnSnapList").addEventListener("click", function(){ loadSnapList(); });
+    document.getElementById("btnSnapNow").addEventListener("click", async function(){
+      if(!syncReady()){ alert("先开启云端同步，才能存快照。"); return; }
+      setSyncStatus("busy", "正在存一份云端快照…");
+      try{
+        var rem = await remoteGet();
+        if(!rem || !rem.data){ setSyncStatus("err", "云端还没有数据文件，没什么可存的。"); return; }
+        var okd = await snapshotRemote(rem, true);
+        setSyncStatus(okd ? "ok" : "err", okd ? "已存一份快照到仓库的 history/ 目录。" : "存快照失败，检查 token 权限。");
+      }catch(e){ setSyncStatus("err", "存快照失败：" + e.message); }
+    });
     if(document.getElementById("btnSyncSave")){
       document.getElementById("btnSyncSave").addEventListener("click", function(){
         var repo = (sRepoEl.value||"").trim().replace(/^https?:\/\/(www\.)?github\.com\//i,"").replace(/\.git$/i,"").replace(/\/+$/,"");
@@ -2686,6 +3108,8 @@
   fillFixed();
   bind();
   renderAll();
+  syncRt.baseTs = syncCfg.baseTs || 0;   // 基线要跨会话记住，否则每次打开都像第一次见云端
+  renderExpTip();
   if(syncReady()){
     setSyncStatus("busy", (fromLink ? "已按链接连接云端 · " : "已开启同步 · ") + "仓库 " + syncCfg.repo + "，正在核对…");
     setTimeout(function(){ syncNow(false, {forcePull: fromLink && !!state.demo}); }, 600);
