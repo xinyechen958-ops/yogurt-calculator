@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=14">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=14">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=14">
+<link rel="manifest" href="manifest.json?v=15">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=15">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=15">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -178,6 +178,27 @@
     border-radius:5px;background:#fdf1dc;color:#8a5a12;vertical-align:middle;white-space:nowrap;}
   .b-empty{color:var(--text-3);font-size:13px;padding:8px 0;line-height:1.7;}
   .b-warn{color:var(--berry);}
+  /* 列表末尾的「新增」入口：长列表往下翻到底也能直接加 */
+  .add-more{
+    display:flex;align-items:center;justify-content:center;gap:7px;width:100%;
+    margin-top:12px;padding:11px 14px;border:1px dashed var(--line-strong);border-radius:10px;
+    background:#fbfdfd;color:var(--accent);font-size:13.5px;font-weight:600;
+  }
+  .add-more:hover,.add-more:active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);}
+  .add-more .add-plus{font-size:16px;font-weight:400;line-height:1;}
+  .add-more .add-hint{font-weight:400;font-size:11.5px;color:var(--text-3);}
+  /* 悬浮「+」：只在原料页出现，滚到哪都能一键新增 */
+  .fab-add{
+    position:fixed;z-index:60;right:15px;bottom:calc(18px + env(safe-area-inset-bottom));
+    width:52px;height:52px;padding:0;border-radius:50%;
+    display:none;align-items:center;justify-content:center;
+    font-size:27px;font-weight:400;line-height:1;
+    background:var(--accent);border:1px solid var(--accent);color:#fff;
+    box-shadow:0 6px 18px rgba(13,148,136,.35);
+  }
+  .fab-add.show{display:flex;}
+  .fab-add:hover,.fab-add:active{background:#0b8378;border-color:#0b8378;color:#fff;}
+  body.fab-on .wrap{padding-bottom:calc(96px + env(safe-area-inset-bottom));}
   .src-chip{display:inline-block;vertical-align:middle;margin-left:6px;
     font-size:10.5px;font-weight:600;letter-spacing:.2px;
     padding:2px 8px;border-radius:999px;white-space:nowrap;cursor:pointer;
@@ -664,7 +685,7 @@
 
   @media print{
     body{background:#fff;}
-    .top-actions,.toolbar,.no-print,.tabs{display:none !important;}
+    .top-actions,.toolbar,.no-print,.tabs,#fabAddIng,.add-more{display:none !important;}
     .appbar{position:static;margin:0 0 10px;padding:0;background:#fff;border-bottom:none;
       -webkit-backdrop-filter:none;backdrop-filter:none;}
     [data-view]{display:block !important;}
@@ -749,6 +770,9 @@
         <tbody></tbody>
       </table>
     </div>
+    <button type="button" id="btnAddIngBottom" class="add-more">
+      <span class="add-plus">＋</span> 新增原料<span class="add-hint">新的一条接在列表最后</span>
+    </button>
     <details class="mix-d" style="margin-top:12px">
       <summary>单位成本怎么算</summary>
       <div class="note" style="margin-top:4px">单位成本 = 采购价 ÷ 规格数量。酸奶、牛奶等液体可用 ml（1ml ≈ 1g）。<br>按「个/份」采购的原料（如柠檬、鸡蛋），可在「每件≈」填一件大约多少 g，配方里就能按「个」或按「g」两种计量方式输入，成本自动换算。</div>
@@ -1007,12 +1031,14 @@
 
 </div>
 
+<button type="button" id="fabAddIng" class="fab-add" aria-label="新增原料" title="新增原料">＋</button>
+
 <script>
 (function(){
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v14 · 1526";
+  var BUILD = "v15 · 1533";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -2877,6 +2903,13 @@
       if(btn) btn.classList.toggle("active", on);
     });
     try{ localStorage.setItem("yogurt-tab", name); }catch(e){}
+    // 悬浮「+」只在原料页出现，滚到列表任何位置都能直接新增
+    var fab = document.getElementById("fabAddIng");
+    if(fab){
+      var fabOn = (name === "ing");
+      fab.classList.toggle("show", fabOn);
+      document.body.classList.toggle("fab-on", fabOn);
+    }
     // 让当前 tab 横向居中（手机上 8 个 tab 放不下，避免选中的那个在屏幕外）
     var nav = document.getElementById("tabs");
     var act = nav && nav.querySelector(".tab.active");
@@ -2974,16 +3007,26 @@
 
     document.getElementById("ingSearch").addEventListener("input", renderIngredients);
     document.getElementById("ingFilter").addEventListener("change", renderIngredients);
-    document.getElementById("btnAddIng").addEventListener("click", function(){
+    // 新增原料：顶栏按钮、列表末尾按钮、右下角悬浮「+」共用这一段
+    function addIngredient(){
       var ing = {id:uid("i"), name:"新原料", cat:"other", size:1000, unit:"g", price:0, note:"", eachG:0};
       state.ingredients.push(ing);
       ingOpen[ing.id] = true;   // 新增后自动展开，方便填规格和价格
       document.getElementById("ingSearch").value="";
       document.getElementById("ingFilter").value="";
       save(); renderAll();
-      var row = document.querySelector('#ingTable tr[data-id="'+ing.id+'"] .f-name');
-      if(row){ row.focus(); row.select(); }
-    });
+      var cell = document.querySelector('#ingTable tr[data-id="'+ing.id+'"] .f-name');
+      if(!cell) return;
+      // 新行在列表最后：先滚到视野中间，再聚焦（preventScroll 避免二次跳动）
+      var tr = cell.closest("tr");
+      if(tr && tr.scrollIntoView) tr.scrollIntoView({block:"center", behavior:"smooth"});
+      try{ cell.focus({preventScroll:true}); }catch(e){ cell.focus(); }
+      if(cell.select) cell.select();
+    }
+    document.getElementById("btnAddIng").addEventListener("click", addIngredient);
+    document.getElementById("btnAddIngBottom").addEventListener("click", addIngredient);
+    var fabIng = document.getElementById("fabAddIng");
+    if(fabIng) fabIng.addEventListener("click", addIngredient);
 
     // 产品区
     var grid = document.getElementById("prodGrid");
