@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=29">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=29">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=29">
+<link rel="manifest" href="manifest.json?v=30">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=30">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=30">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -884,7 +884,7 @@
   <!-- 自制库 -->
   <section class="card" data-view="base">
     <h2>② 自制库 <span class="pill">一锅一锅做的半成品</span></h2>
-    <p class="desc">按六类分开管：<b>自制酸奶底</b>（原味/希腊/椰子…）、<b>自制预拌酸奶</b>（各口味预拌）、<b>自制果酱</b>、<b>自制风味水果</b>（糖渍/酒渍/茶渍…）、<b>自制麦片</b>、<b>自制冻冻</b>。填投料 + 每批产出量，自动算出品率和每克成本；在配方里就能像原料一样直接取用。投料也是打字搜索，不用在长列表里翻。<br><b>+ 预拌酸奶 ▾</b> 是口味模板：点开挑一个口味，直接建好一项，并把「自制原味酸奶（有糖）」加进投料（原料库里没有会顺手建一条）。口味原料找不到不会乱建，只在备注里提醒你补一行。</p>
+    <p class="desc">按六类分开管：<b>自制酸奶底</b>（原味/希腊/椰子…）、<b>自制预拌酸奶</b>（各口味预拌）、<b>自制果酱</b>、<b>自制风味水果</b>（糖渍/酒渍/茶渍…）、<b>自制麦片</b>、<b>自制冻冻</b>。填投料 + 每批产出量，自动算出品率和每克成本；在配方里就能像原料一样直接取用。投料也是打字搜索，<b>原料和自制半成品都能选</b> —— 预拌酸奶这类「用另一锅酸奶做的」，直接选自制里的那一项，成本会跟着它变。<br><b>+ 预拌酸奶 ▾</b> 是口味模板：点开挑一个口味，直接建好一项，投料自动连到自制库里那一锅「原味酸奶（有糖）」（找不到才退回去找原料、都没有才建一条占位并提醒填价）。口味原料找不到不会乱建，只在备注里提醒你补一行。</p>
     <div class="pg-wrap" id="baseGrid"></div>
     <div class="toolbar" style="margin-top:14px;margin-bottom:0">
       <button id="btnAddPremix" class="ghost">+ 预拌酸奶 <span class="caret">▾</span></button>
@@ -1147,7 +1147,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v29 · 2115";
+  var BUILD = "v30 · 2137";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -1405,26 +1405,70 @@
     return 0;
   }
   // 一批自制的核算：投料成本 + 其它耗材 → 摊到产出量上
-  function baseBatch(b){
-    var mat=0, inG=0, rows=[];
+  // v30：投料也能引用别的自制（预拌酸奶 ← 原味酸奶（有糖）），按对方的单位成本递归算；
+  //      seen 是当前这条递归链上的自制，撞上就是绕成环了，这条按 0 计并标出来（不崩、不死循环）
+  function baseBatch(b, seen){
+    if(!b) return {mat:0, supplies:0, total:0, out:0, inG:0, rows:[], yieldRate:0, unit:0, cycle:false};
+    seen = seen || {};
+    var mat=0, inG=0, rows=[], cyc=false;
+    seen[b.id] = 1;
     (b.recipe||[]).forEach(function(r){
-      var ing = ingById(r.ingId != null ? r.ingId : r.refId);
-      if(!ing) return;
+      if(rowIsBase(r)){
+        var rb = baseById(rowRefId(r));
+        if(!rb){ rows.push({missing:true, amount:(+r.amount)||0, u:(r.u||"g"), cost:0}); return; }
+        var amt = (+r.amount)||0;
+        if(seen[rb.id]){                  // 自己用自己，或 A→B→A
+          cyc = true;
+          rows.push({base:rb, amount:amt, u:(rb.unit||"g"), cost:0, cycle:true});
+          return;
+        }
+        var rbB = baseBatch(rb, seen);
+        if(rbB.cycle){                    // 下游有环 → 这一条也摊不出成本，一并标出来
+          cyc = true;
+          rows.push({base:rb, amount:amt, u:(rb.unit||"g"), cost:0, cycle:true});
+          return;
+        }
+        var cb = amt * rbB.unit;
+        mat += cb; inG += amt;
+        rows.push({base:rb, amount:amt, u:(rb.unit||"g"), cost:cb, unit:rbB.unit});
+        return;
+      }
+      var ing = ingById(rowRefId(r));
+      if(!ing){ rows.push({missing:true, amount:(+r.amount)||0, u:(r.u||"g"), cost:0}); return; }
       var c = amtInIngUnit(r) * unitCost(ing);
       mat += c;
       inG += toGrams(ing, r.amount, r.u || ing.unit);
       rows.push({ing:ing, amount:r.amount, u:(r.u||ing.unit), cost:c});
     });
+    delete seen[b.id];
     var supplies = (+b.supplies)||0;
     var out = (+b.out)||0;
     var total = mat + supplies;
     return {
       mat:mat, supplies:supplies, total:total, out:out, inG:inG, rows:rows,
       yieldRate: inG > 0 ? out / inG : 0,
-      unit: out > 0 ? total / out : 0
+      unit: out > 0 ? total / out : 0,
+      cycle:cyc
     };
   }
   function baseUnitCost(b){ return baseBatch(b).unit; }
+  // id 这一项（连同它下面用到的自制）会不会用到 target —— 用来判断「加进去会不会绕成环」
+  function baseUsesDeep(id, target, seen){
+    if(!id || !target) return false;
+    if(id === target) return true;
+    seen = seen || {};
+    if(seen[id]) return false;
+    seen[id] = 1;
+    var b = baseById(id); if(!b) return false;
+    var hit = false, list = b.recipe || [];
+    for(var i=0;i<list.length;i++){
+      var r = list[i];
+      if(!rowIsBase(r)) continue;
+      var rid = rowRefId(r);
+      if(rid === target || baseUsesDeep(rid, target, seen)){ hit = true; break; }
+    }
+    return hit;
+  }
   // 每一行（原料或自制）的单位价格与计价数量
   function rowUnitCost(r){
     if(rowIsBase(r)){ var b = baseById(rowRefId(r)); return b ? baseUnitCost(b) : 0; }
@@ -1443,17 +1487,25 @@
   function rowCost(r){
     return rowAmt(r) * rowUnitCost(r);
   }
-  // 1 单位自制里含多少某原料，用于把用量拆回原料（采购量才准）
-  function baseIngPerUnit(b, ingId){
-    var bb = baseBatch(b), out = bb.out;
-    if(out <= 0) return 0;
-    var per = 0;
-    (b.recipe||[]).forEach(function(r){
-      if((r.ingId != null ? r.ingId : r.refId) !== ingId) return;
-      var ing = ingById(ingId);
-      per += amtInIngUnit(r) / out;
-    });
-    return per;
+  // 把用掉的 qty（自制单位，g/ml）一路拆回原料，累加到 add 里（自制套自制也能拆到底）
+  function baseIngUsage(b, qty, add, seen){
+    if(!b || !(qty > 0)) return;
+    seen = seen || {};
+    if(seen[b.id]) return;                 // 有环就停，别无限递归
+    seen[b.id] = 1;
+    var out = (+b.out)||0;
+    if(out > 0){
+      var ratio = qty / out;
+      (b.recipe||[]).forEach(function(r){
+        if(rowIsBase(r)){
+          var rb = baseById(rowRefId(r));
+          if(rb) baseIngUsage(rb, ((+r.amount)||0) * ratio, add, seen);
+        }else{
+          add(rowRefId(r), amtInIngUnit(r) * ratio);
+        }
+      });
+    }
+    delete seen[b.id];
   }
 
   // factor: 模拟系数（默认 1）
@@ -1516,7 +1568,7 @@
     };
   }
 
-  // 原料月用量：产品里直接用的原料 + 通过自制间接消耗的原料（拆回原料，采购量才准）
+  // 原料月用量：产品里直接用的原料 + 通过自制（含自制套自制）间接消耗的原料，全拆回原料，采购量才准
   function monthlyUsage(){
     var map={};
     function add(id, n){ if(!id) return; if(map[id]==null) map[id]=0; map[id]+=n; }
@@ -1526,11 +1578,7 @@
         var r=p.recipe[j];
         if(rowIsBase(r)){
           var b = baseById(rowRefId(r)); if(!b) continue;
-          var amt = rowAmt(r) * v;                 // 这个月要用多少 g 自制
-          (b.recipe||[]).forEach(function(br){
-            var ingId = br.ingId != null ? br.ingId : br.refId;
-            add(ingId, amt * baseIngPerUnit(b, ingId));
-          });
+          baseIngUsage(b, rowAmt(r) * v, add);     // 这个月要用多少 g 自制 → 拆到底
         }else{
           add(rowRefId(r), amtInIngUnit(r) * v);
         }
@@ -1660,7 +1708,70 @@
       // 非法值（手改过 JSON）也要重猜，否则卡片会掉出所有分组
       if(!prodCatValid(p.cat)) p.cat = guessProdCat(p);
     });
+    // 自制投料行：v30 起也能引用别的自制（预拌酸奶 ← 原味酸奶（有糖）），旧行全是原料
+    s.bases.forEach(function(b){
+      (b.recipe||[]).forEach(function(r){
+        if(r.refId == null) r.refId = r.ingId;
+        if(r.kind !== "base") r.kind = "ing";
+      });
+    });
+    healNestedRows(s);
     return s;
+  }
+  // v30 修复：早期「+ 预拌酸奶」在原料库里建过一条 0 元的「自制原味酸奶（有糖）」占位，投料指到了它。
+  // 现在投料能直接连自制 —— 自制库里有同名那一锅，就把这行改过去，占位原料没人用了就清掉。
+  function healNestedRows(s){
+    var bases = s.bases || [], ings = s.ingredients || [];
+    function bById(id){ for(var i=0;i<bases.length;i++){ if(bases[i].id===id) return bases[i]; } return null; }
+    function iById(id){ for(var i=0;i<ings.length;i++){ if(ings[i].id===id) return ings[i]; } return null; }
+    function key(x){
+      return String(x==null?"":x).replace(/[\s\u3000]+/g,"").toLowerCase()
+        .replace(/[\s()（）\[\]【】{}<>《》·．.,，、；;:：\-_/\\|"'“”‘’]/g,"").replace(/^自制/, "");
+    }
+    function usesDeep(id, target, seen){
+      if(id === target) return true;
+      seen = seen || {}; if(seen[id]) return false; seen[id] = 1;
+      var b = bById(id); if(!b) return false;
+      var list = b.recipe || [];
+      for(var i=0;i<list.length;i++){
+        var rid = list[i].refId != null ? list[i].refId : list[i].ingId;
+        if(list[i].kind === "base" && (rid === target || usesDeep(rid, target, seen))) return true;
+      }
+      return false;
+    }
+    var dropped = {};
+    bases.forEach(function(b){
+      (b.recipe||[]).forEach(function(r){
+        if(r.kind === "base") return;
+        var ing = iById(r.refId); if(!ing) return;
+        // 只认「程序当初自动建的那条占位」：0 元、1000g、g、酸奶基底、没备注
+        if((+ing.price||0) !== 0 || (+ing.size||0) !== 1000 || ing.unit !== "g" || ing.cat !== "base") return;
+        if(String(ing.note||"").trim()) return;
+        var k = key(ing.name); if(!k) return;
+        var hit = null;
+        for(var i=0;i<bases.length;i++){
+          var x = bases[i];
+          if(x.id === b.id || key(x.name) !== k) continue;
+          if(usesDeep(x.id, b.id)) continue;        // 会绕成环，别动
+          hit = x; break;
+        }
+        if(!hit) return;
+        r.kind = "base"; r.refId = hit.id; delete r.ingId;
+        r.u = hit.unit || "g";
+        dropped[ing.id] = 1;
+      });
+    });
+    // 占位原料彻底没人用了才删（产品配方、别的自制都不再引用）
+    Object.keys(dropped).forEach(function(id){
+      var used = false;
+      (s.products||[]).forEach(function(p){
+        (p.recipe||[]).forEach(function(r){ if(r.kind !== "base" && (r.refId != null ? r.refId : r.ingId) === id) used = true; });
+      });
+      bases.forEach(function(b){
+        (b.recipe||[]).forEach(function(r){ if(r.kind !== "base" && r.refId === id) used = true; });
+      });
+      if(!used) s.ingredients = s.ingredients.filter(function(x){ return x.id !== id; });
+    });
   }
   function save(opts){
     opts = opts||{};
@@ -2481,8 +2592,7 @@
     Array.prototype.forEach.call(grid.querySelectorAll(".bcard"), function(card){
       var sel = card.querySelector(".b-add-sel"), amt = card.querySelector(".b-add-amt");
       if(!sel || !amt) return;
-      var gi = ingById(stripRef(sel.getAttribute("data-v")) || sel.value);
-      amt.placeholder = "用量(" + ((gi && gi.unit) || "g") + ")";
+      amt.placeholder = "用量(" + refPlaceholder(sel.getAttribute("data-v")) + ")";
     });
     refreshDupTips();
   }
@@ -2491,14 +2601,28 @@
   function baseCardHtml(b){
       var bb = baseBatch(b);
       var rows = (b.recipe||[]).map(function(r){
-        var ing = ingById(r.ingId != null ? r.ingId : r.refId);
-        if(!ing) return "";
-        var uc = unitCostIn(ing, r.u||ing.unit);
-        return '<tr data-rid="'+r.id+'" data-ing="'+ing.id+'">'
-          + '<td class="r-name">'+esc(ing.name)+'</td>'
-          + '<td class="num r-amt"><span class="amt-box"><input type="number" class="b-amount" step="any" min="0" value="'+r.amount+'">'+unitCell(ing,r)+'</span></td>'
-          + '<td class="num muted r-uc">'+num(uc, uc<1?4:2)+'</td>'
-          + '<td class="num" data-bcost="'+r.id+'">'+money(amtInIngUnit(r)*unitCost(ing))+'</td>'
+        var isB = rowIsBase(r);
+        var ref = isB ? baseById(rowRefId(r)) : ingById(rowRefId(r));
+        if(!ref){
+          return '<tr data-rid="'+r.id+'">'
+            + '<td class="r-name muted">'+esc(rowName(r))+'</td>'
+            + '<td class="num r-amt">'+num((+r.amount)||0,0)+'</td>'
+            + '<td class="num muted r-uc">—</td>'
+            + '<td class="num" data-bcost="'+r.id+'">—</td>'
+            + '<td class="right r-del" style="width:44px"><button class="mini ghost b-del-r">×</button></td>'
+            + '</tr>';
+        }
+        // 用到的自制项反过来又用到自己 → 环，成本没法算，标出来
+        var cyc = isB && baseUsesDeep(ref.id, b.id);
+        var u = isB ? (ref.unit || "g") : (r.u || ref.unit);
+        var uc = isB ? baseUnitCost(ref) : unitCostIn(ref, u);
+        var cost = isB ? ((+r.amount)||0) * uc : amtInIngUnit(r) * unitCost(ref);
+        var uCell = isB ? '<span data-utext="'+r.id+'">'+esc(u)+'</span>' : unitCell(ref, r);
+        return '<tr data-rid="'+r.id+'"'+(isB ? ' data-kind="base"' : ' data-ing="'+ref.id+'"')+'>'
+          + '<td class="r-name">'+esc(ref.name)+(isB ? '<span class="tag-base">自制</span>' : '')+'</td>'
+          + '<td class="num r-amt"><span class="amt-box"><input type="number" class="b-amount" step="any" min="0" value="'+r.amount+'">'+uCell+'</span></td>'
+          + '<td class="num muted r-uc" data-buc="'+r.id+'">'+num(uc, uc<1?4:2)+'</td>'
+          + '<td class="num" data-bcost="'+r.id+'">'+(cyc ? '<span class="b-warn" title="这条投料又用到自己，成本算不出，先删掉其中一边">循环引用</span>' : money(cost))+'</td>'
           + '<td class="right r-del" style="width:44px"><button class="mini ghost b-del-r">×</button></td>'
           + '</tr>';
       }).join("");
@@ -2532,8 +2656,8 @@
         +   '<tbody>'+rows+'</tbody>'
         +   '<tfoot><tr><td colspan="3">投料成本（每批）</td><td class="num" data-bmat="'+b.id+'">'+money(bb.mat)+'</td><td></td></tr></tfoot></table></div>'
         +   '<div class="add-row">'
-        +     '<input type="text" class="b-add-sel" data-combo="ing" autocomplete="off" role="combobox" aria-expanded="false"'
-        +       ' placeholder="输入原料名搜索，如 牛奶" title="可以直接打字搜索，↑↓ 选择、回车确认">'
+        +     '<input type="text" class="b-add-sel" data-combo="all" autocomplete="off" role="combobox" aria-expanded="false"'
+        +       ' placeholder="输入原料或自制名搜索，如 牛奶" title="原料和自制半成品都能直接搜，↑↓ 选择、回车确认">'
         +     '<input type="number" class="b-add-amt" step="any" min="0" placeholder="用量" style="width:90px;display:inline-block;vertical-align:middle"> '
         +     '<button class="mini b-add-btn">+ 加入投料</button>'
         +   '</div>'
@@ -2561,9 +2685,23 @@
     set(q("bunit"), unitTxt);
     set(q("bunit-h"), " " + unitTxt);   // 卡头那行也要跟着变
     (b.recipe||[]).forEach(function(r){
-      var c = document.querySelector('[data-bcost="'+r.id+'"]');
-      var ing = ingById(r.ingId != null ? r.ingId : r.refId);
-      if(c && ing) c.textContent = money(amtInIngUnit(r)*unitCost(ing));
+      var el = document.querySelector('[data-bcost="'+r.id+'"]');
+      var uc = document.querySelector('[data-buc="'+r.id+'"]');
+      var isB = rowIsBase(r);
+      var ref = isB ? baseById(rowRefId(r)) : ingById(rowRefId(r));
+      if(!ref) return;
+      if(el) el.textContent = money(rowCost(r));
+      if(uc){
+        var v = isB ? baseUnitCost(ref) : rowUnitCostIn(r);
+        uc.textContent = num(v, v<1?4:2);
+      }
+    });
+  }
+  // 改了某个自制 → 用到它的自制（可能还不止一层）卡片上的数字也要跟着变
+  function refreshBaseDeps(id){
+    (state.bases||[]).forEach(function(x){
+      if(x.id === id) return;
+      if(baseUsesDeep(x.id, id)) refreshBaseDerived(x.id);
     });
   }
 
@@ -2969,13 +3107,14 @@
           bb.mat.toFixed(2), bb.supplies.toFixed(2), bb.total.toFixed(2), num(bb.unit, bb.unit<1?4:2), b.note||""]]));
       });
       lines.push("");
-      lines.push(csvRows([["自制投料明细","原料","用量","单位","该项成本(元)"]]));
+      lines.push(csvRows([["自制投料明细","项目","类型","用量","单位","该项成本(元)"]]));
       state.bases.forEach(function(b){
         (b.recipe||[]).forEach(function(r){
-          var ing = ingById(r.ingId != null ? r.ingId : r.refId);
-          if(!ing) return;
-          lines.push(csvRows([[b.name, ing.name, r.amount||0, r.u || ing.unit,
-            (amtInIngUnit(r) * unitCost(ing)).toFixed(4)]]));
+          var isB = rowIsBase(r);
+          var ref = isB ? baseById(rowRefId(r)) : ingById(rowRefId(r));
+          if(!ref) return;
+          lines.push(csvRows([[b.name, ref.name, isB ? "自制" : "原料", r.amount||0, r.u || ref.unit,
+            rowCost(r).toFixed(4)]]));
         });
       });
     }else{
@@ -3308,7 +3447,12 @@
   /* ---------- 原料选择器：打字搜索（原料一多，下拉框翻不动） ---------- */
   var combo = { input:null, hi:-1 };
 
-  function comboItems(kind){
+  // host：在哪个自制卡片里搜（自制不能选自己，也不能选「会间接用到自己」的那一项，否则绕成环）
+  function comboHostOf(input){
+    var card = input && input.closest ? input.closest(".bcard") : null;
+    return card ? (card.getAttribute("data-id") || "") : "";
+  }
+  function comboItems(kind, host){
     var out = [];
     if(kind !== "base"){
       state.ingredients.forEach(function(i){
@@ -3322,6 +3466,7 @@
     }
     if(kind !== "ing"){
       (state.bases||[]).forEach(function(b){
+        if(host && baseUsesDeep(b.id, host)) return;
         var bb = baseBatch(b);
         out.push({
           v:"base:"+b.id, n:b.name, u:b.unit||"g",
@@ -3332,9 +3477,9 @@
     }
     return out;
   }
-  function comboFind(mode, kw){
+  function comboFind(mode, kw, host){
     var k = (kw||"").trim().toLowerCase();
-    var ings = comboItems("ing"), bases = (mode === "all") ? comboItems("base") : [];
+    var ings = comboItems("ing"), bases = (mode === "all") ? comboItems("base", host) : [];
     if(!k) return { ings:ings.slice(0,12), bases:bases.slice(0,12) };
     function f(a){ return a.filter(function(x){ return x.kw.indexOf(k) >= 0; }); }
     return { ings:f(ings).slice(0,40), bases:f(bases).slice(0,40) };
@@ -3362,7 +3507,7 @@
     var input = combo.input; if(!input) return;
     var el = comboListEl();
     var mode = input.getAttribute("data-combo") === "all" ? "all" : "ing";
-    var c = comboFind(mode, input.value);
+    var c = comboFind(mode, input.value, comboHostOf(input));
     var html = "";
     if(c.ings.length){
       if(mode === "all") html += '<div class="ci-g">原料</div>';
@@ -3443,7 +3588,7 @@
     var t = (input.value||"").trim().toLowerCase();
     if(!t) return "";
     var mode = input.getAttribute("data-combo") === "all" ? "all" : "ing";
-    var c = comboFind(mode, t);
+    var c = comboFind(mode, t, comboHostOf(input));
     var all = c.ings.concat(c.bases);
     var exact = all.filter(function(x){ return x.n.toLowerCase() === t; });
     return exact.length === 1 ? exact[0].v : (all.length === 1 ? all[0].v : "");
@@ -3614,7 +3759,7 @@
         return (p.recipe||[]).some(function(r){ return !rowIsBase(r) && rowRefId(r)===id; });
       }).length;
       var usedB = (state.bases||[]).filter(function(b){
-        return (b.recipe||[]).some(function(r){ return rowRefId(r)===id; });
+        return (b.recipe||[]).some(function(r){ return !rowIsBase(r) && rowRefId(r)===id; });
       }).length;
       var used = usedBy + usedB;
       // 先变红「确认删除」，再点一次才真删；删完还能撤销
@@ -3812,6 +3957,24 @@
       }
       return null;
     }
+    // 按名字找自制项（预拌酸奶的投料本来就是自制酸奶底里的那一锅，不该再建一条原料）
+    // strict：只认「基本同名」，不做互相包含 —— 给口味原料用，免得把「糖渍草莓」当成「草莓」
+    function findBaseByName(t, strict){
+      var want = normName(t); if(!want) return null;
+      var wLoose = looseName(t), bases = state.bases || [], i, n;
+      for(i=0;i<bases.length;i++){ if(normName(bases[i].name) === want) return bases[i]; }
+      for(i=0;i<bases.length;i++){ if(looseName(bases[i].name) === wLoose) return bases[i]; }
+      var short = wLoose.replace(/^自制/, "");
+      if(short && short !== wLoose){
+        for(i=0;i<bases.length;i++){ if(looseName(bases[i].name) === short) return bases[i]; }
+      }
+      if(strict) return null;
+      for(i=0;i<bases.length;i++){
+        n = looseName(bases[i].name);
+        if(n.length >= 3 && (n.indexOf(wLoose) >= 0 || wLoose.indexOf(n) >= 0)) return bases[i];
+      }
+      return null;
+    }
     function addBasePreset(k){
       var ps = presetByKey(k); if(!ps) return null;
       var cat = baseCatValid(ps.cat) ? ps.cat : "yogurt";
@@ -3826,8 +3989,15 @@
         flashEl(el0);
         return same;
       }
-      var recipe = [], made = [], missing = [];
+      var recipe = [], made = [], missing = [], linked = [];
       (ps.ings || []).forEach(function(it){
+        // 先看自制库里有没有这一锅（酸奶底就是自制项，不是原料）
+        var rb = findBaseByName(it.name, !!it.opt);
+        if(rb){
+          recipe.push({id:uid("r"), kind:"base", refId:rb.id, amount:it.amount, u:(rb.unit || "g")});
+          linked.push(rb.name);
+          return;
+        }
         var ing = findIngByName(it.name);
         if(!ing){
           // 口味原料（opt）：不硬建一条名字可能不对的原料，只提醒用户自己补
@@ -3850,6 +4020,7 @@
       if(el && el.scrollIntoView) el.scrollIntoView({block:"center", behavior:"smooth"});
       flashEl(el);
       var tips = [];
+      if(linked.length) tips.push("投料里的「" + linked.join("、") + "」直接连到自制库里那一项，它的成本一变，这里跟着变。");
       if(made.length) tips.push("原料库里没找到「" + made.join("、") + "」，已顺手建了一条（采购价 0），记得去「① 原料库」填上规格和价格。");
       if(missing.length) tips.push("口味原料「" + missing.join("、") + "」在原料库里没找到，没给你瞎建 —— 用卡片里的「加入投料」自己加一行。");
       if(tips.length) alert("已新增「" + ps.n + "」。\n\n" + tips.join("\n\n"));
@@ -3953,12 +4124,17 @@
         var usedBy = state.products.filter(function(p){
           return (p.recipe||[]).some(function(r){ return rowIsBase(r) && rowRefId(r)===b.id; });
         }).map(function(p){ return p.name; });
+        // 别的自制用它做投料（预拌酸奶 ← 原味酸奶）也算「在用」，删了对方那行会变成「已删除」
+        var usedBase = (state.bases||[]).filter(function(x){
+          return x.id !== b.id && (x.recipe||[]).some(function(r){ return rowIsBase(r) && rowRefId(r)===b.id; });
+        }).map(function(x){ return x.name; });
+        var usedCnt = usedBy.length + usedBase.length;
         armOrRun("base:"+b.id, e.target, "确认删除", function(){
           var bIdx = idxById(state.bases, b.id);
           var goneB = state.bases[bIdx];
           state.bases.splice(bIdx, 1);
           save(); renderAll();
-          pushUndo("自制「" + b.name + "」" + (usedBy.length ? "（" + usedBy.length + " 个产品在用）" : ""), function(){
+          pushUndo("自制「" + b.name + "」" + (usedCnt ? "（" + usedCnt + " 处配方在用）" : ""), function(){
             state.bases.splice(bIdx, 0, goneB);
           });
         });
@@ -3980,11 +4156,23 @@
       }
       if(e.target.className.indexOf("b-add-btn")>=0){
         var sel = card.querySelector(".b-add-sel"), amt = card.querySelector(".b-add-amt");
-        var ingId = stripRef(comboResolve(sel)), amount = parseFloat(amt.value);
-        if(!ingId){ alert("先在搜索框里点选一个原料（输入名称就能筛选）"); return; }
+        var refVal = comboResolve(sel), amount = parseFloat(amt.value);
+        if(!refVal){ alert("先在搜索框里点选一个原料或自制半成品（输入名称就能筛选）"); return; }
         if(isNaN(amount) || amount<=0){ alert("请填写用量"); return; }
-        var ing = ingById(ingId);
-        b.recipe.push({id:uid("r"), ingId:ingId, refId:ingId, amount:amount, u:(ing? (ing.unit||"g") : "g")});
+        var isB = refVal.indexOf("base:") === 0;
+        var refId = stripRef(refVal);
+        if(isB){
+          var rb = baseById(refId);
+          if(!rb){ alert("这一项自制好像已经被删掉了，刷新一下页面再试"); return; }
+          if(rb.id === b.id || baseUsesDeep(rb.id, b.id)){
+            alert("「" + rb.name + "」已经（间接）用到当前这一项了，再加进去会绕成环，成本算不出来。");
+            return;
+          }
+          b.recipe.push({id:uid("r"), kind:"base", refId:rb.id, amount:amount, u:(rb.unit||"g")});
+        }else{
+          var ing = ingById(refId);
+          b.recipe.push({id:uid("r"), ingId:refId, refId:refId, amount:amount, u:(ing? (ing.unit||"g") : "g")});
+        }
         amt.value = "";
         save(); renderAll(); return;
       }
@@ -4007,6 +4195,7 @@
       else return;
       save();
       refreshBaseDerived(b.id);
+      refreshBaseDeps(b.id);   // 用它的自制（预拌酸奶这类）卡片上的数字也要跟着变
       refresh();   // 产品用了这个自制，单碗成本要跟着变
     });
 
