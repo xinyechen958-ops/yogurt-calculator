@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=24">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=24">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=24">
+<link rel="manifest" href="manifest.json?v=25">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=25">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=25">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -100,7 +100,8 @@
 
   table{width:100%;border-collapse:collapse;}
   th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle;}
-  th{font-size:11.5px;color:var(--text-3);font-weight:600;white-space:nowrap;background:#f9fbfc;letter-spacing:.1px;}
+  /* v25：全站表头加重（原来 11.5px/--text-3 太淡，分类/列名几乎看不见） */
+  th{font-size:12px;color:var(--text-2);font-weight:700;white-space:nowrap;background:#f3f6f9;letter-spacing:.2px;}
   td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
   tbody tr:hover{background:#fafbfc;}
   tfoot td{font-weight:600;border-bottom:none;background:#fafbfc;}
@@ -130,18 +131,26 @@
   /* 配方页：按分类（酸奶碗 / 酸奶昔 / 饮品 / 三明治）分组 */
   .pgroup{margin-bottom:8px;}
   .pgroup:last-child{margin-bottom:0;}
-  .pg-head{display:flex;align-items:center;gap:8px;padding:2px 0 10px;}
-  /* v23：分组标题加重（色条 + 800 字重），一眼能看出分了几类 */
+  /* v25：分组标题做成整条「分类横条」——浅青底 + 左色条 + 深青字，全站分类标签统一语言 */
+  .pg-head{display:flex;align-items:center;gap:8px;padding:6px 10px 7px;margin:2px 0 9px;
+    background:linear-gradient(90deg,#eaf6f4 0%,#f6fbfa 68%);
+    border-left:3px solid var(--accent);border-radius:0 8px 8px 0;}
+  /* 空分类的横条淡化：有内容的组用强色，避免一串空组连成彩色色块 */
+  .pgroup.is-empty .pg-head{background:#f7f9fa;border-left-color:#ccd9d9;}
+  .pgroup.is-empty .pg-title{color:var(--text-2);}
+  .pgroup.is-empty .pg-n{color:var(--text-3);background:#eef2f6;box-shadow:none;font-weight:600;}
   .pg-head .pg-title{display:inline-flex;align-items:center;gap:7px;font-size:15px;font-weight:800;
-    color:var(--text);letter-spacing:.2px;line-height:1.3;}
-  .pg-head .pg-title::before{content:"";flex:0 0 auto;width:3px;height:15px;border-radius:2px;background:var(--accent);}
-  .pg-head .pg-n{font-size:12px;font-weight:600;color:var(--text-2);background:#eef2f6;border-radius:999px;padding:2px 8px;}
+    color:#0b5f59;letter-spacing:.2px;line-height:1.3;}
+  .pg-head .pg-n{font-size:12px;font-weight:700;color:#0b5f59;background:#fff;border-radius:999px;padding:2px 8px;
+    box-shadow:inset 0 0 0 1px rgba(13,148,136,.2);}
   .pg-head .pg-add{margin-left:auto;font-size:12px;padding:4px 10px;}
-  .p-catrow{display:flex;align-items:center;gap:7px;padding:0 0 9px;font-size:12px;color:var(--text-3);flex-wrap:nowrap;}
+  .p-catrow{display:flex;align-items:center;gap:7px;padding:0 0 9px;font-size:12px;color:var(--text-3);flex-wrap:nowrap;
+    font-weight:600;}
+  .p-catrow>span:first-of-type{color:var(--text-2);font-weight:700;}
   .p-catrow select{padding:4px 7px;border:1px solid #e0e6ed;border-radius:8px;font-size:12.5px;
     background:#fcfdfe;color:var(--text);flex:0 0 auto;min-width:116px;max-width:170px;}
   .p-catrow select:focus{background:#fff;}
-  .p-catrow .muted{flex:1 1 auto;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .p-catrow .muted{flex:1 1 auto;min-width:0;font-size:11.5px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   /* 重名提醒：名称下面那条小提示，点一下跳到重复的那条 */
   .dup-tip{display:none;width:100%;margin-top:3px;padding:3px 7px;border-radius:7px;
     font-family:inherit;font-size:11px;line-height:1.45;text-align:left;font-weight:400;letter-spacing:0;
@@ -153,8 +162,8 @@
   input.f-name.dup,input.p-name.dup{border-color:#e0a3a3 !important;background:#fff7f7 !important;}
   @keyframes dupFlash{0%,100%{box-shadow:none}15%,55%{box-shadow:0 0 0 3px rgba(224,163,163,.5)}}
   .flash{animation:dupFlash 1.5s ease;}
-  /* 原料库：按分类分组的小标题行（v23 加重：色条 + 更深字色） */
-  #ingTable tr.cat-head td{background:#f4f8f9;color:var(--text);font-size:13px;font-weight:800;
+  /* 原料库：分类小标题行（v25 与配方/自制的「分类横条」同色系：浅青底 + 左色条 + 深青字） */
+  #ingTable tr.cat-head td{background:#eaf6f4;color:#0b5f59;font-size:13px;font-weight:800;
     padding:7px 10px;letter-spacing:.2px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
     border-left:3px solid var(--accent);}
   #ingTable tbody tr.cat-head:first-child td{border-top:none;}
@@ -674,8 +683,8 @@
     #ingTable tbody tr.cat-head{display:block;margin:12px 0 6px;padding:0;
       border:none;background:transparent;box-shadow:none;border-radius:0;}
     #ingTable tbody tr.cat-head:first-child{margin-top:2px;}
-    #ingTable tbody tr.cat-head td{background:#f1f5f7;border:1px solid var(--line);border-left:3px solid var(--accent);
-      border-radius:9px;padding:6px 10px !important;font-size:13px;font-weight:800;color:var(--text);}
+    #ingTable tbody tr.cat-head td{background:#eaf6f4;border:1px solid #d5ece8;border-left:4px solid var(--accent);
+      border-radius:9px;padding:7px 10px !important;font-size:13.5px;font-weight:800;color:#0b5f59;}
     .cards tfoot tr{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;
       border:none;padding:0;margin-top:2px;background:transparent;}
     .cards tfoot td{border:none !important;padding:0 !important;text-align:left !important;}
@@ -1132,7 +1141,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v24 · 2009";
+  var BUILD = "v25 · 2017";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -2453,7 +2462,7 @@
         var body = list.length
           ? '<div class="prod-grid">'+ list.map(baseCardHtml).join("") +'</div>'
           : (bases.length ? '<div class="b-empty">这一类还没有，点右上「+ 新增」加一项</div>' : '');
-        return '<section class="pgroup" data-cat="'+c.k+'">'+ head + body +'</section>';
+        return '<section class="pgroup'+(list.length ? "" : " is-empty")+'" data-cat="'+c.k+'">'+ head + body +'</section>';
       }).join("");
     Array.prototype.forEach.call(grid.querySelectorAll(".bcard"), function(card){
       var sel = card.querySelector(".b-add-sel"), amt = card.querySelector(".b-add-amt");
@@ -2561,7 +2570,7 @@
       var body = list.length
         ? '<div class="prod-grid">'+ list.map(prodCardHtml).join("") +'</div>'
         : '<div class="empty" style="padding:2px 2px 8px">这一类还没有产品</div>';
-      return '<section class="pgroup" data-cat="'+c.k+'">'+ head + body +'</section>';
+      return '<section class="pgroup'+(list.length ? "" : " is-empty")+'" data-cat="'+c.k+'">'+ head + body +'</section>';
     }).join("");
     // 「加入配方」输入框的占位符跟随所选项单位（原料或自制）
     Array.prototype.forEach.call(grid.querySelectorAll(".prod"), function(card){
