@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=17">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=17">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=17">
+<link rel="manifest" href="manifest.json?v=18">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=18">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=18">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -127,6 +127,22 @@
 
   /* 产品卡 */
   .prod-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:12px;}
+  /* 配方页：按分类（酸奶碗 / 酸奶昔 / 三明治）分组 */
+  .pgroup{margin-bottom:8px;}
+  .pgroup:last-child{margin-bottom:0;}
+  .pg-head{display:flex;align-items:center;gap:8px;padding:2px 0 9px;}
+  .pg-head .pg-title{font-size:14px;font-weight:700;color:var(--text);letter-spacing:.2px;}
+  .pg-head .pg-n{font-size:11.5px;color:var(--text-3);background:#f2f5f8;border-radius:6px;padding:2px 7px;}
+  .pg-head .pg-add{margin-left:auto;font-size:12px;padding:4px 10px;}
+  .p-catrow{display:flex;align-items:center;gap:7px;padding:0 0 9px;font-size:12px;color:var(--text-3);}
+  .p-catrow select{padding:4px 7px;border:1px solid #e0e6ed;border-radius:8px;font-size:12.5px;
+    background:#fcfdfe;color:var(--text);}
+  .p-catrow select:focus{background:#fff;}
+  /* 原料库：按分类分组的小标题行 */
+  #ingTable tr.cat-head td{background:#f6f9fa;color:var(--text-2);font-size:12.5px;font-weight:700;
+    padding:7px 10px;letter-spacing:.2px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+  #ingTable tbody tr.cat-head:first-child td{border-top:none;}
+  #ingTable tr.cat-head td::before{display:none !important;}
   .prod{border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;background:#fff;
     box-shadow:0 1px 2px rgba(16,24,40,.03);transition:box-shadow .18s,border-color .18s;}
   .prod:hover{border-color:#dde3ea;}
@@ -603,6 +619,12 @@
     #ingTable tbody tr.open td.c-del{grid-area:6/1/7/3;}
     #ingTable tbody tr.open .del{display:inline-block;}
     #ingTable tbody tr.open{background:#fbfdfd;box-shadow:0 2px 10px rgba(13,148,136,.07);}
+    /* 窄屏：分类小标题做成一条独立的胶囊，不受行卡片样式影响 */
+    #ingTable tbody tr.cat-head{display:block;margin:12px 0 6px;padding:0;
+      border:none;background:transparent;box-shadow:none;border-radius:0;}
+    #ingTable tbody tr.cat-head:first-child{margin-top:2px;}
+    #ingTable tbody tr.cat-head td{background:#f1f5f7;border:1px solid var(--line);border-radius:9px;
+      padding:6px 10px !important;font-size:12.5px;font-weight:700;color:var(--text-2);}
     .cards tfoot tr{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;
       border:none;padding:0;margin-top:2px;background:transparent;}
     .cards tfoot td{border:none !important;padding:0 !important;text-align:left !important;}
@@ -753,7 +775,7 @@
   <!-- 原料库 -->
   <section class="card" data-view="ing">
     <h2>① 原料库 <span class="pill">改价格即全局生效</span></h2>
-    <p class="desc">按「规格 + 单价」录采购价，自动换算单位成本；水果涨价直接改采购价即可。</p>
+    <p class="desc">按「规格 + 单价」录采购价，自动换算单位成本；水果涨价直接改采购价即可。列表按分类分组，改一条的分类会自动归到对应组。</p>
     <div class="toolbar">
       <input type="text" id="ingSearch" class="grow" placeholder="搜索原料名称…（例如：蓝莓）">
       <select id="ingFilter" style="width:auto">
@@ -818,10 +840,10 @@
   <!-- 配方 -->
   <section class="card" data-view="recipe">
     <h2>③ 配方与单碗成本 <span class="pill">按产品配置用量</span></h2>
-    <p class="desc">用量单位与原料库一致；按「个」采购又按「克」用的原料，可切换单位。明细默认收起，点箭头展开编辑。原料多的时候，直接在「加入配方」框里打字搜名称（或分类，如「水果」）。</p>
-    <div class="prod-grid" id="prodGrid"></div>
+    <p class="desc">产品按 <b>酸奶碗 / 酸奶昔 / 三明治</b> 分组；展开卡片，在「分类」里可以把它挪到别的组，也可以直接点各组的「+ 新增」。用量单位与原料库一致；按「个」采购又按「克」用的原料，可切换单位。明细默认收起，点箭头展开编辑。原料多的时候，直接在「加入配方」框里打字搜名称（或分类，如「水果」）。</p>
+    <div class="pg-wrap" id="prodGrid"></div>
     <div class="toolbar" style="margin-top:14px;margin-bottom:0">
-      <button id="btnAddProd">+ 新增产品</button>
+      <button id="btnAddProd">+ 新增产品（酸奶碗）</button>
       <button id="btnSaveRecipe" class="primary">保存并同步</button>
       <span id="recipeState" class="save-state">改动会自动存本机；点「保存并同步」可立刻上传到云端</span>
     </div>
@@ -1053,7 +1075,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v17 · 1759";
+  var BUILD = "v18 · 1818";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -1064,6 +1086,22 @@
   };
   var COLORS = ["#0d9488","#2563eb","#e11d48","#f59e0b","#7c3aed","#0891b2","#65a30d","#db2777","#ea580c","#4f46e5","#059669","#a16207"];
   var BASE_COLOR = "#ba7517";   // 自制在成本条里的颜色
+
+  /* 产品分类：配方页按这个分组（v18 起） */
+  var PROD_CATS = [
+    {k:"bowl",     n:"酸奶碗"},
+    {k:"smoothie", n:"酸奶昔"},
+    {k:"sandwich", n:"三明治"},
+    {k:"other",    n:"其他"}
+  ];
+  function prodCatName(k){ for(var i=0;i<PROD_CATS.length;i++){ if(PROD_CATS[i].k===k) return PROD_CATS[i].n; } return "其他"; }
+  // 老数据没有 cat：按名字猜一个，猜不出就归到酸奶碗
+  function guessProdCat(p){
+    var n = String((p && p.name) || "");
+    if(/昔|冰沙|smoothie|奶昔/i.test(n)) return "smoothie";
+    if(/三明治|吐司|贝果|可颂|卷|堡|sandwich/i.test(n)) return "sandwich";
+    return "bowl";
+  }
 
   var state = null;
   var ingOpen = {};   // 窄屏下哪些原料行处于展开态（仅界面状态，不写盘）
@@ -1093,7 +1131,7 @@
       I("树莓/覆盆子","fruit",125,"g",25,"高价易损"),
       I("无花果","fruit",500,"g",36,"")
     ];
-    function P(name,price,daily,recipe){ return {id:uid("p"),name:name,price:price,daily:daily,ch:"",rate:null,recipe:recipe}; }
+    function P(name,price,daily,recipe,cat){ return {id:uid("p"),name:name,price:price,daily:daily,ch:"",rate:null,cat:cat||"bowl",recipe:recipe}; }
     function R(idx,amount){ return {id:uid("r"), kind:"ing", refId:ings[idx].id, ingId:ings[idx].id, amount:amount}; }
     return {
       ingredients: ings,
@@ -1434,6 +1472,8 @@
         if(r.refId == null) r.refId = r.ingId;
         if(r.kind !== "base") r.kind = "ing";
       });
+      // 产品分类：v18 新增，老数据按名字猜一个（碗 / 昔 / 三明治）
+      if(!p.cat) p.cat = guessProdCat(p);
     });
     return s;
   }
@@ -2070,7 +2110,30 @@
       return true;
     });
     if(!list.length){ tb.innerHTML = '<tr><td colspan="8" class="empty">没有匹配的原料</td></tr>'; return; }
-    tb.innerHTML = list.map(function(ing){
+
+    // 按分类分组：组的顺序固定跟着 CATS，组内保持原来的录入顺序
+    // （不能只按遍历顺序插标题 —— 万一同一种分类的行被别的行隔开，会出现两个相同标题）
+    var groupOf = {}, order = [];
+    list.forEach(function(ing){
+      var k = ing.cat || "other";
+      if(!groupOf[k]){ groupOf[k] = []; order.push(k); }
+      groupOf[k].push(ing);
+    });
+    var ranks = Object.keys(CATS);
+    order.sort(function(a,b){
+      var ra = ranks.indexOf(a), rb = ranks.indexOf(b);
+      return (ra < 0 ? 99 : ra) - (rb < 0 ? 99 : rb);
+    });
+    tb.innerHTML = order.map(function(k){
+      var c = CATS[k] || {name:"其他"};
+      return '<tr class="cat-head" data-cat="'+esc(k)+'"><td colspan="8">'+esc(c.name)
+           + ' <span style="font-weight:400;color:var(--text-3)">· '+groupOf[k].length+' 种</span></td></tr>'
+           + groupOf[k].map(ingRowHtml).join("");
+    }).join("");
+  }
+
+  // 单条原料行（分组渲染时复用）
+  function ingRowHtml(ing){
       var uc = unitCost(ing);
       var open = !!ingOpen[ing.id];
       return '<tr data-id="'+ing.id+'"'+(open?' class="open"':'')+'>'
@@ -2086,7 +2149,6 @@
         + '<td class="c-note c-full" data-label="备注"><input type="text" class="f-note" value="'+esc(ing.note)+'" placeholder="可选，如供应商 / 到货日期"></td>'
         + '<td class="c-del" data-label=""><button class="mini ghost ing-toggle" data-id="'+ing.id+'" aria-expanded="'+(open?"true":"false")+'">'+(open?"收起":"编辑")+'</button><button class="mini ghost del" data-id="'+ing.id+'">删除</button></td>'
         + '</tr>';
-    }).join("");
   }
 
   // 配方行的单位单元格：始终跟随原料；采购按「个」且填了每件净重时可切 g
@@ -2191,11 +2253,35 @@
     });
   }
 
-  /* ---------- 渲染：产品配方 ---------- */
+  /* ---------- 渲染：产品配方（按分类分组） ---------- */
   function renderProducts(){
     var grid = document.getElementById("prodGrid");
     if(!state.products.length){ grid.innerHTML='<div class="empty">还没有产品，点下方「新增产品」</div>'; return; }
-    grid.innerHTML = state.products.map(function(p){
+    // 分类顺序固定：酸奶碗 → 酸奶昔 → 三明治 → 其他
+    // 「其他」没有内容就不显示；三个主分类即使为空也留着，好让用户直接往里加
+    grid.innerHTML = PROD_CATS.map(function(c){
+      var list = state.products.filter(function(p){ return (p.cat || "bowl") === c.k; });
+      if(!list.length && c.k === "other") return "";
+      var head = '<div class="pg-head">'
+        + '<span class="pg-title">'+esc(c.n)+'</span>'
+        + '<span class="pg-n">'+list.length+' 款</span>'
+        + '<button type="button" class="mini ghost pg-add" data-cat="'+c.k+'">+ 新增</button>'
+        + '</div>';
+      var body = list.length
+        ? '<div class="prod-grid">'+ list.map(prodCardHtml).join("") +'</div>'
+        : '<div class="empty" style="padding:2px 2px 8px">这一类还没有产品</div>';
+      return '<section class="pgroup" data-cat="'+c.k+'">'+ head + body +'</section>';
+    }).join("");
+    // 「加入配方」输入框的占位符跟随所选项单位（原料或自制）
+    Array.prototype.forEach.call(grid.querySelectorAll(".prod"), function(card){
+      var sel = card.querySelector(".add-sel"), amt = card.querySelector(".add-amt");
+      if(!sel || !amt) return;
+      amt.placeholder = "用量(" + refPlaceholder(sel.getAttribute("data-v") || sel.value) + ")";
+    });
+  }
+
+  // 单个产品卡片
+  function prodCardHtml(p){
       var rc = recipeCost(p);
       var rows = rc.rows.slice().sort(function(a,b){ return b.cost-a.cost; });
       var maxc = rows.length? rows[0].cost : 1;
@@ -2247,6 +2333,12 @@
         +   '<button type="button" class="del-p" aria-label="删除产品" title="删除产品">&times;</button>'
         + '</div>'
         + '<div class="p-body">'
+        +   '<div class="p-catrow"><span>分类</span>'
+        +     '<select class="p-cat" title="换一个分类，这张卡片会移到对应分组">'
+        +       PROD_CATS.map(function(c){ return '<option value="'+c.k+'"'+((p.cat||"bowl")===c.k?" selected":"")+'>'+esc(c.n)+'</option>'; }).join("")
+        +     '</select>'
+        +     '<span class="muted">改完会移到对应分组</span>'
+        +   '</div>'
         +   '<div class="scroll-x narrow"><table><thead><tr><th>原料</th><th class="num">用量 / 单位</th><th class="num r-uc">单价</th><th class="num">成本</th><th></th></tr></thead>'
         +   '<tbody>'+recipeRows+'</tbody>'
         +   '<tfoot><tr><td colspan="3">单碗原料成本</td><td class="num" data-total="'+p.id+'">'+money(rc.total)+'</td><td></td></tr></tfoot></table></div>'
@@ -2265,13 +2357,6 @@
         +     '<div class="sum-item is-key"><div class="s-l">毛利率</div><div class="s-v" data-margin="'+p.id+'">'+pct(margin(p))+'</div></div>'
         +   '</div>'
         + '</div></div>';
-    }).join("");
-    // 「加入配方」输入框的占位符跟随所选项单位（原料或自制）
-    Array.prototype.forEach.call(grid.querySelectorAll(".prod"), function(card){
-      var sel = card.querySelector(".add-sel"), amt = card.querySelector(".add-amt");
-      if(!sel || !amt) return;
-      amt.placeholder = "用量(" + refPlaceholder(sel.getAttribute("data-v") || sel.value) + ")";
-    });
   }
 
   /* ---------- 渲染：售价表 ---------- */
@@ -2551,11 +2636,11 @@
     })));
     lines.push("");
     lines.push("【产品与定价】");
-    lines.push(csvRows([["产品","售价(元)","日销量(碗)","单碗原料成本(元)","单碗毛利(元)","毛利率","单碗成本合计(元)"]]));
+    lines.push(csvRows([["产品","分类","售价(元)","日销量(碗)","单碗原料成本(元)","单碗毛利(元)","毛利率","单碗成本合计(元)"]]));
     lines.push(csvRows(state.products.map(function(p){
       var rc = recipeCost(p).total;
       var up = unitProfit(p);
-      return [p.name, priceOf(p), p.daily||0, rc.toFixed(2), up.toFixed(2),
+      return [p.name, prodCatName(p.cat), priceOf(p), p.daily||0, rc.toFixed(2), up.toFixed(2),
               (margin(p)*100).toFixed(1)+"%", (priceOf(p) - up).toFixed(2)];
     })));
     lines.push("");
@@ -3237,6 +3322,11 @@
       var card = e.target.closest(".prod[data-id]"); if(!card) return;
       var pid = card.getAttribute("data-id");
       var p = state.products.filter(function(x){return x.id===pid;})[0]; if(!p) return;
+      if(e.target.className.indexOf("p-cat")>=0){
+        var k = e.target.value;
+        if(k && k !== p.cat){ p.cat = k; save(); renderProducts(); renderPrice(); }
+        return;
+      }
       if(e.target.className.indexOf("r-u")>=0){
         var tr = e.target.closest("tr[data-rid]");
         var r = p.recipe.filter(function(x){return x.id===tr.getAttribute("data-rid");})[0];
@@ -3245,6 +3335,9 @@
       }
     });
     grid.addEventListener("click", function(e){
+      // 分组标题上的「+ 新增」：直接往这一组里加
+      var addBtn = e.target.closest(".pg-add");
+      if(addBtn){ addProduct(addBtn.getAttribute("data-cat")); return; }
       var card = e.target.closest(".prod[data-id]"); if(!card) return;
       var pid = card.getAttribute("data-id");
       var p = state.products.filter(function(x){return x.id===pid;})[0]; if(!p) return;
@@ -3279,16 +3372,18 @@
         save(); renderAll();
       }
     });
-    document.getElementById("btnAddProd").addEventListener("click", function(){
+    function addProduct(cat){
+      cat = cat || "bowl";
       var first = state.ingredients[0];
-      var p = {id:uid("p"), name:"新品酸奶碗", price:35, daily:10,
+      var p = {id:uid("p"), name:"新品"+prodCatName(cat), price:35, daily:10, cat:cat,
                recipe: first? [{id:uid("r"), kind:"ing", refId:first.id, ingId:first.id, amount:180}] : []};
       state.products.push(p);
       ui.open[p.id] = 1; saveUi();   // 新建的产品默认展开，方便马上编辑
       save(); renderAll();
       var el = document.querySelector('#prodGrid .prod[data-id="'+p.id+'"]');
       if(el && el.scrollIntoView) el.scrollIntoView({block:"center", behavior:"smooth"});
-    });
+    }
+    document.getElementById("btnAddProd").addEventListener("click", function(){ addProduct("bowl"); });
 
     /* ---------- 自制页交互 ---------- */
     document.getElementById("btnAddBase").addEventListener("click", function(){
@@ -3738,6 +3833,9 @@
   var fromLink = urlCfg ? applySyncLink(urlCfg) : false;
 
   state = load();
+  // 老数据缺的字段（比如 v18 的产品分类）在 normalize 里补好后立刻落盘一次：
+  // 否则每次开页面都要重新按名字猜分类，用户改个名就可能跑到别的组去
+  save({keepTs:true, nosync:true, keepDemo:true});
   fillFixed();
   bind();
   renderAll();
