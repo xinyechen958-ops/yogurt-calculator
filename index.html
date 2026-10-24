@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=21">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=21">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=21">
+<link rel="manifest" href="manifest.json?v=22">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=22">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=22">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -136,7 +136,7 @@
   .pg-head .pg-add{margin-left:auto;font-size:12px;padding:4px 10px;}
   .p-catrow{display:flex;align-items:center;gap:7px;padding:0 0 9px;font-size:12px;color:var(--text-3);flex-wrap:nowrap;}
   .p-catrow select{padding:4px 7px;border:1px solid #e0e6ed;border-radius:8px;font-size:12.5px;
-    background:#fcfdfe;color:var(--text);flex:0 0 auto;min-width:116px;max-width:150px;}
+    background:#fcfdfe;color:var(--text);flex:0 0 auto;min-width:116px;max-width:170px;}
   .p-catrow select:focus{background:#fff;}
   .p-catrow .muted{flex:1 1 auto;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   /* 重名提醒：名称下面那条小提示，点一下跳到重复的那条 */
@@ -866,7 +866,7 @@
   <!-- 自制库 -->
   <section class="card" data-view="base">
     <h2>② 自制库 <span class="pill">一锅一锅做的半成品</span></h2>
-    <p class="desc">按四类分开管：<b>自制酸奶底</b>（原味/希腊/椰子…）、<b>自制果酱</b>、<b>自制麦片</b>、<b>自制冻冻</b>。填投料 + 每批产出量，自动算出品率和每克成本；在配方里就能像原料一样直接取用。投料也是打字搜索，不用在长列表里翻。</p>
+    <p class="desc">按五类分开管：<b>自制酸奶底</b>（原味/希腊/椰子…）、<b>自制果酱</b>、<b>自制风味水果</b>（糖渍/酒渍/茶渍…）、<b>自制麦片</b>、<b>自制冻冻</b>。填投料 + 每批产出量，自动算出品率和每克成本；在配方里就能像原料一样直接取用。投料也是打字搜索，不用在长列表里翻。</p>
     <div class="pg-wrap" id="baseGrid"></div>
     <div class="toolbar" style="margin-top:14px;margin-bottom:0">
       <button id="btnAddBase">+ 新增自制</button>
@@ -1128,7 +1128,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v21 · 1911";
+  var BUILD = "v22 · 1944";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -1156,10 +1156,11 @@
     return "bowl";
   }
 
-  /* 自制分类：自制页按这个分组（v20 起） */
+  /* 自制分类：自制页按这个分组（v20 起，v22 加「风味水果」） */
   var BASE_CATS = [
     {k:"yogurt",  n:"自制酸奶底"},
     {k:"jam",     n:"自制果酱"},
+    {k:"fruit",   n:"自制风味水果"},
     {k:"granola", n:"自制麦片"},
     {k:"jelly",   n:"自制冻冻"}
   ];
@@ -1171,6 +1172,8 @@
     if(/果酱|酱|果茸|jam/i.test(n)) return "jam";
     if(/麦片|格兰诺拉|燕麦|脆片|granola/i.test(n)) return "granola";
     if(/冻冻|奶冻|果冻|布丁|jelly|jello/i.test(n)) return "jelly";
+    // 风味水果：糖渍 / 酒渍 / 茶渍 / 蜜渍的水果。必须放最后，避免「芒果果酱」「草莓冻冻」被抢走
+    if(/水果|糖渍|蜜渍|酒渍|茶渍|果肉|果丁|凤梨|菠萝|草莓|蓝莓|树莓|蔓越莓|桑葚|桃|芒果|香蕉|榴莲|猕猴桃|奇异果|橙|柠檬|柚子|葡萄|提子|苹果|樱桃|车厘子|百香果|荔枝|龙眼|无花果|牛油果|哈密瓜|西瓜|椰子/i.test(n)) return "fruit";
     return "yogurt";
   }
   // 卡片上永远显示一个合法分类（脏数据兜底）
@@ -1611,7 +1614,7 @@
       if(b.note == null) b.note = "";
       b.recipe = Array.isArray(b.recipe) ? b.recipe : [];
       b.recipe.forEach(function(r){ if(!r.id) r.id = uid("r"); });
-      // 自制分类：v20 新增，老数据按名字猜一个（酸奶底 / 果酱 / 麦片 / 冻冻）
+      // 自制分类：v20 新增，老数据按名字猜一个（酸奶底 / 果酱 / 风味水果 / 麦片 / 冻冻）
       if(!baseCatValid(b.cat)) b.cat = guessBaseCat(b);
     });
     // 配方行：旧格式 {ingId} → 新格式 {kind:"ing"|"base", refId}；老数据一律是原料
@@ -2425,8 +2428,8 @@
     var grid = document.getElementById("baseGrid");
     if(!grid) return;
     var bases = state.bases || [];
-    // 分类顺序固定：酸奶底 → 果酱 → 麦片 → 冻冻；空分类也留着，好让用户直接往里加
-    grid.innerHTML = (bases.length ? "" : '<div class="b-empty">还没有自制半成品。分类下面任意一组的「+ 新增」，把酸奶底、果酱、麦片、冻冻这类'
+    // 分类顺序固定：酸奶底 → 果酱 → 风味水果 → 麦片 → 冻冻；空分类也留着，好让用户直接往里加
+    grid.innerHTML = (bases.length ? "" : '<div class="b-empty">还没有自制半成品。分类下面任意一组的「+ 新增」，把酸奶底、果酱、风味水果、麦片、冻冻这类'
         + '<b>先做一批再按克用</b>的东西录进来。<br>'
         + '如果你之前把它们当原料记在「① 原料库」里，建议在这里重建一遍 —— 这样牛奶涨价多少、出品率掉到多少，都能直接看出来。</div>')
       + BASE_CATS.map(function(c){
@@ -3712,7 +3715,7 @@
     document.getElementById("btnAddProd").addEventListener("click", function(){ addProduct("bowl"); });
 
     /* ---------- 自制页交互 ---------- */
-    var BASE_NEW_NAME = {yogurt:"新酸奶底", jam:"新果酱", granola:"新麦片", jelly:"新冻冻"};
+    var BASE_NEW_NAME = {yogurt:"新酸奶底", jam:"新果酱", fruit:"新风味水果", granola:"新麦片", jelly:"新冻冻"};
     function addBase(cat){
       if(!state.ingredients.length){ alert("先在「① 原料库」里添加原料（牛奶、菌种等），再来录自制半成品。"); return; }
       if(!baseCatValid(cat)) cat = "yogurt";
