@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=20">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=20">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20">
+<link rel="manifest" href="manifest.json?v=21">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=21">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=21">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -139,6 +139,17 @@
     background:#fcfdfe;color:var(--text);flex:0 0 auto;min-width:116px;max-width:150px;}
   .p-catrow select:focus{background:#fff;}
   .p-catrow .muted{flex:1 1 auto;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  /* 重名提醒：名称下面那条小提示，点一下跳到重复的那条 */
+  .dup-tip{display:none;width:100%;margin-top:3px;padding:3px 7px;border-radius:7px;
+    font-family:inherit;font-size:11px;line-height:1.45;text-align:left;font-weight:400;letter-spacing:0;
+    border:1px solid #f0d69a;background:#fff8e8;color:#8a5a00;cursor:pointer;}
+  .dup-tip.on{display:block;}
+  .dup-tip.same{border-color:#e8b4b4;background:#fdecec;color:#a12a2a;font-weight:600;}
+  .dup-tip.cross{border-color:var(--line);background:#f4f7fa;color:var(--text-3);}
+  .dup-tip:hover{filter:brightness(.96);}
+  input.f-name.dup,input.p-name.dup{border-color:#e0a3a3 !important;background:#fff7f7 !important;}
+  @keyframes dupFlash{0%,100%{box-shadow:none}15%,55%{box-shadow:0 0 0 3px rgba(224,163,163,.5)}}
+  .flash{animation:dupFlash 1.5s ease;}
   /* 原料库：按分类分组的小标题行 */
   #ingTable tr.cat-head td{background:#f6f9fa;color:var(--text-2);font-size:12.5px;font-weight:700;
     padding:7px 10px;letter-spacing:.2px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
@@ -1117,7 +1128,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v20 · 1850";
+  var BUILD = "v21 · 1911";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -2236,6 +2247,114 @@
     }
   }
 
+  /* ---------- 重名提醒 ---------- */
+  // 比对用的名字：去掉所有空白 + 忽略大小写（「蓝 莓」和「蓝莓」算同名）
+  function normName(s){ return String(s==null?"":s).replace(/[\s\u3000]+/g,"").toLowerCase(); }
+  // 再去掉括号后缀：「蓝莓（冷冻）」和「蓝莓」算「很像」
+  function coreName(s){
+    return normName(s).replace(/[（(][^）)]*[）)]/g,"").replace(/[【\[][^】\]]*[】\]]/g,"");
+  }
+  function dupPools(kind){
+    if(kind === "base") return [{k:"base", label:"自制库", list:state.bases||[]},
+                                {k:"ing",  label:"原料库", list:state.ingredients||[]}];
+    if(kind === "prod") return [{k:"prod", label:"配方", list:state.products||[]}];
+    return [{k:"ing",  label:"原料库", list:state.ingredients||[]},
+            {k:"base", label:"自制库", list:state.bases||[]}];
+  }
+  // 返回 {level:"same"|"cross"|"like", text, go:{k,id}}；没有重复则返回 null
+  function dupInfo(kind, id, name){
+    var n = normName(name); if(!n) return null;
+    var core = coreName(name);
+    var pools = dupPools(kind);
+    for(var i=0;i<pools.length;i++){
+      var pool = pools[i], same = null, like = null;
+      for(var j=0;j<pool.list.length;j++){
+        var it = pool.list[j]; if(!it) continue;
+        if(pool.k === kind && it.id === id) continue;      // 排除自己
+        var nn = normName(it.name); if(!nn) continue;
+        if(nn === n){ same = it; break; }
+        if(!like && core.length >= 2 && coreName(it.name) === core) like = it;
+      }
+      if(same){
+        var cross = pool.k !== kind;
+        return {
+          level: cross ? "cross" : "same",
+          text: (cross ? pool.label + "里也有「" : "已经有「") + same.name + "」"
+              + (cross ? "，别两处各算一份成本" : "，是不是重复录了？") + " · 点这里看看",
+          go: {k:pool.k, id:same.id}
+        };
+      }
+      // 「很像」只在本库内提示，跨库同名已经由上面那条覆盖了
+      if(like && pool.k === kind){
+        return {level:"like", text:"和已有的「"+like.name+"」很像，确认不是同一条？ · 点这里看看",
+                go:{k:pool.k, id:like.id}};
+      }
+    }
+    return null;
+  }
+  function dupTipHtml(kind, id, name){
+    var info = dupInfo(kind, id, name);
+    return '<button type="button" class="dup-tip'+(info?" on "+info.level:"")+'" data-dup="'+esc(kind+":"+id)+'"'
+      + (info ? ' data-go="'+esc(info.go.k+":"+info.go.id)+'" title="点一下跳到那一条"' : '')
+      + '>'+(info ? esc(info.text) : "")+'</button>';
+  }
+  function dupNameOf(kind, id){
+    if(kind === "ing"){ var i = ingById(id); return i ? i.name : null; }
+    if(kind === "base"){ var b = baseById(id); return b ? b.name : null; }
+    var p = state.products.filter(function(x){ return x.id===id; })[0];
+    return p ? p.name : null;
+  }
+  // 改名后不整页重绘（光标会跳），只把每条提示重算一遍
+  function refreshDupTips(){
+    Array.prototype.forEach.call(document.querySelectorAll(".dup-tip[data-dup]"), function(el){
+      var raw = el.getAttribute("data-dup") || "";
+      var sp = raw.indexOf(":"); if(sp < 0) return;
+      var kind = raw.slice(0, sp), id = raw.slice(sp+1);
+      var name = dupNameOf(kind, id); if(name == null) return;
+      var info = dupInfo(kind, id, name);
+      el.className = "dup-tip" + (info ? " on " + info.level : "");
+      el.textContent = info ? info.text : "";
+      if(info) el.setAttribute("data-go", info.go.k + ":" + info.go.id);
+      else el.removeAttribute("data-go");
+      var host = el.closest("tr[data-id]") || el.closest(".prod") || el.closest(".bcard");
+      var input = host && host.querySelector(".f-name, .p-name");
+      if(input){
+        if(info && info.level === "same") input.classList.add("dup");
+        else input.classList.remove("dup");
+        // 产品卡默认折叠，红框旁边给个悬停说明
+        if(info) input.title = info.text.replace(/ · 点这里看看$/, "");
+        else input.removeAttribute("title");
+      }
+    });
+  }
+  function flashEl(el){ if(!el) return; el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+    setTimeout(function(){ el.classList.remove("flash"); }, 1700); }
+  function scrollTo_(el){ if(el && el.scrollIntoView) el.scrollIntoView({block:"center", behavior:"smooth"}); }
+  // 点提示条：跳到重复的那一条并闪一下（跨库会自动切页）
+  function gotoDup(k, id){
+    if(!id) return;
+    if(k === "ing"){
+      showTab("ing");
+      var s = document.getElementById("ingSearch"), f = document.getElementById("ingFilter");
+      if(s) s.value = "";            // 有搜索词时那条可能是被筛掉的
+      if(f) f.value = "";
+      renderIngredients();
+      var tr = document.querySelector('#ingTable tr[data-id="'+id+'"]');
+      if(tr){ scrollTo_(tr); flashEl(tr); }
+      return;
+    }
+    if(k === "base"){
+      showTab("base");
+      var bc = document.querySelector('#baseGrid .bcard[data-id="'+id+'"]');
+      if(bc){ scrollTo_(bc); flashEl(bc); }
+      return;
+    }
+    showTab("recipe");
+    ui.open[id] = 1; saveUi(); renderProducts();
+    var pc = document.querySelector('#prodGrid .prod[data-id="'+id+'"]');
+    if(pc){ scrollTo_(pc); flashEl(pc); }
+  }
+
   /* ---------- 渲染：原料库 ---------- */
   function renderIngredients(){
     var kw = (document.getElementById("ingSearch").value||"").trim().toLowerCase();
@@ -2267,6 +2386,7 @@
            + ' <span style="font-weight:400;color:var(--text-3)">· '+groupOf[k].length+' 种</span></td></tr>'
            + groupOf[k].map(ingRowHtml).join("");
     }).join("");
+    refreshDupTips();
   }
 
   // 单条原料行（分组渲染时复用）
@@ -2274,7 +2394,7 @@
       var uc = unitCost(ing);
       var open = !!ingOpen[ing.id];
       return '<tr data-id="'+ing.id+'"'+(open?' class="open"':'')+'>'
-        + '<td class="c-name c-full" data-label="原料名称"><input type="text" class="f-name" value="'+esc(ing.name)+'"><span class="ing-sub" data-sub="'+ing.id+'">'+esc(ingSub(ing))+'</span></td>'
+        + '<td class="c-name c-full" data-label="原料名称"><input type="text" class="f-name" value="'+esc(ing.name)+'"><span class="ing-sub" data-sub="'+ing.id+'">'+esc(ingSub(ing))+'</span>'+dupTipHtml("ing", ing.id, ing.name)+'</td>'
         + '<td class="c-cat c-full" data-label="分类"><select class="f-cat">'+ Object.keys(CATS).map(function(k){ return '<option value="'+k+'"'+(k===ing.cat?" selected":"")+'>'+CATS[k].name+'</option>'; }).join("") +'</select></td>'
         + '<td class="c-size c-num" data-label="采购规格"><input type="number" class="f-size" step="any" min="0" value="'+ing.size+'"></td>'
         + '<td class="c-unit" data-label="单位"><select class="f-unit"><option value="g"'+(ing.unit==="g"?" selected":"")+'>g</option><option value="ml"'+(ing.unit==="ml"?" selected":"")+'>ml</option><option value="个"'+(ing.unit==="个"?" selected":"")+'>个/份</option></select></td>'
@@ -2327,6 +2447,7 @@
       var gi = ingById(stripRef(sel.getAttribute("data-v")) || sel.value);
       amt.placeholder = "用量(" + ((gi && gi.unit) || "g") + ")";
     });
+    refreshDupTips();
   }
 
   // 单张自制卡片（分组渲染时复用）
@@ -2358,6 +2479,7 @@
         +   '<button type="button" class="del-p del-b" aria-label="删除自制" title="删除自制">&times;</button>'
         + '</div>'
         + '<div class="p-body">'
+        +   dupTipHtml("base", b.id, b.name)
         +   '<div class="p-catrow"><span>分类</span>'
         +     '<select class="b-cat" title="换一个分类，这张卡片会移到对应分组">'
         +       BASE_CATS.map(function(c){ return '<option value="'+c.k+'"'+(baseCatOf(b)===c.k?" selected":"")+'>'+esc(c.n)+'</option>'; }).join("")
@@ -2433,6 +2555,7 @@
       if(!sel || !amt) return;
       amt.placeholder = "用量(" + refPlaceholder(sel.getAttribute("data-v") || sel.value) + ")";
     });
+    refreshDupTips();
   }
 
   // 单个产品卡片
@@ -2488,6 +2611,7 @@
         +   '<button type="button" class="del-p" aria-label="删除产品" title="删除产品">&times;</button>'
         + '</div>'
         + '<div class="p-body">'
+        +   dupTipHtml("prod", p.id, p.name)
         +   '<div class="p-catrow"><span>分类</span>'
         +     '<select class="p-cat" title="换一个分类，这张卡片会移到对应分组">'
         +       PROD_CATS.map(function(c){ return '<option value="'+c.k+'"'+((p.cat||"bowl")===c.k?" selected":"")+'>'+esc(c.n)+'</option>'; }).join("")
@@ -3382,7 +3506,7 @@
       var id = tr.getAttribute("data-id");
       var ing = ingById(id); if(!ing) return;
       var cls = e.target.className;
-      if(cls.indexOf("f-name")>=0){ ing.name = e.target.value; renderProducts(); renderPrice(); refresh(); }
+      if(cls.indexOf("f-name")>=0){ ing.name = e.target.value; renderProducts(); renderPrice(); refresh(); refreshDupTips(); }
       else if(cls.indexOf("f-size")>=0){ ing.size = parseFloat(e.target.value)||0; refreshRow(tr,ing); }
       else if(cls.indexOf("f-price")>=0){
         if(priceEditFrom===null) priceEditFrom = ing.price;
@@ -3484,6 +3608,15 @@
       if(ARMED.el && (ARMED.el === e.target || ARMED.el.contains(e.target))) return;
       disarm();
     }, true);
+    // 点重名提示条：跳到重复的那一条并闪一下
+    document.addEventListener("click", function(e){
+      var t = e.target.closest ? e.target.closest(".dup-tip[data-go]") : null;
+      if(!t) return;
+      e.stopPropagation();
+      var raw = t.getAttribute("data-go") || "", sp = raw.indexOf(":");
+      if(sp < 0) return;
+      gotoDup(raw.slice(0, sp), raw.slice(sp+1));
+    });
 
     // 产品区
     var grid = document.getElementById("prodGrid");
@@ -3491,7 +3624,7 @@
       var card = e.target.closest(".prod[data-id]"); if(!card) return;
       var pid = card.getAttribute("data-id");
       var p = state.products.filter(function(x){return x.id===pid;})[0]; if(!p) return;
-      if(e.target.className.indexOf("p-name")>=0){ p.name=e.target.value; renderPrice(); refresh(); save(); return; }
+      if(e.target.className.indexOf("p-name")>=0){ p.name=e.target.value; renderPrice(); refresh(); save(); refreshDupTips(); return; }
       if(e.target.className.indexOf("r-amount")>=0){
         var tr = e.target.closest("tr[data-rid]");
         var rid = tr.getAttribute("data-rid");
@@ -3648,7 +3781,7 @@
       var card = e.target.closest(".bcard"); if(!card) return;
       var b = baseById(card.getAttribute("data-id")); if(!b) return;
       var cls = e.target.className || "";
-      if(cls.indexOf("b-name")>=0){ b.name = e.target.value; }
+      if(cls.indexOf("b-name")>=0){ b.name = e.target.value; refreshDupTips(); }
       else if(cls.indexOf("b-out")>=0){ b.out = parseFloat(e.target.value) || 0; }
       else if(cls.indexOf("b-sup")>=0){ b.supplies = parseFloat(e.target.value) || 0; }
       else if(cls.indexOf("b-note")>=0){ b.note = e.target.value; }
