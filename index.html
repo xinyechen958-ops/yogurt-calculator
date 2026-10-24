@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=15">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=15">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=15">
+<link rel="manifest" href="manifest.json?v=16">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=16">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=16">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -199,6 +199,21 @@
   .fab-add.show{display:flex;}
   .fab-add:hover,.fab-add:active{background:#0b8378;border-color:#0b8378;color:#fff;}
   body.fab-on .wrap{padding-bottom:calc(96px + env(safe-area-inset-bottom));}
+  /* 原料选择器：原料多了下拉翻不动，改成可以打字的搜索框 */
+  input.add-sel,input.b-add-sel{width:200px;display:inline-block;vertical-align:middle;}
+  .combo-list{
+    position:fixed;z-index:80;background:#fff;border:1px solid var(--line-strong);
+    border-radius:10px;box-shadow:var(--shadow-pop);padding:4px;overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .combo-list[hidden]{display:none;}
+  .combo-list .ci{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+    padding:8px 9px;border-radius:7px;cursor:pointer;}
+  .combo-list .ci:hover,.combo-list .ci.hi{background:var(--accent-soft);}
+  .combo-list .ci-n{font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .combo-list .ci-s{font-size:11px;color:var(--text-3);white-space:nowrap;flex:0 0 auto;}
+  .combo-list .ci-g{font-size:11px;color:var(--text-3);padding:6px 9px 2px;letter-spacing:.2px;}
+  .combo-list .ci-empty{padding:10px 9px;font-size:12px;color:var(--text-3);line-height:1.6;}
   .src-chip{display:inline-block;vertical-align:middle;margin-left:6px;
     font-size:10.5px;font-weight:600;letter-spacing:.2px;
     padding:2px 8px;border-radius:999px;white-space:nowrap;cursor:pointer;
@@ -622,7 +637,7 @@
     .prod .r-del{width:30px !important;}
     .prod .amt-box input[type=number]{width:100%;}
     .prod .add-row{display:flex;gap:6px;flex-wrap:wrap;}
-    .prod .add-row .add-sel{flex:1 1 100%;min-width:0;width:auto !important;}
+    .prod .add-row .add-sel,.prod .add-row .b-add-sel{flex:1 1 100%;min-width:0;width:auto !important;}
     .prod .add-row .add-amt{width:auto !important;flex:1 1 auto;min-width:0;}
     .prod .add-row .add-btn{flex:0 0 auto;white-space:nowrap;}
 
@@ -782,7 +797,7 @@
   <!-- 基底库 -->
   <section class="card" data-view="base">
     <h2>② 基底库 <span class="pill">一锅一锅做的半成品</span></h2>
-    <p class="desc">自制酸奶底、希腊酸奶、格兰诺拉这类「先做一批、再按克用」的半成品，单独在这里录。填投料 + 每批产出量，自动算出品率和每克成本；在配方里就能像原料一样直接取用。</p>
+    <p class="desc">自制酸奶底、希腊酸奶、格兰诺拉这类「先做一批、再按克用」的半成品，单独在这里录。填投料 + 每批产出量，自动算出品率和每克成本；在配方里就能像原料一样直接取用。投料也是打字搜索，不用在长列表里翻。</p>
     <div class="prod-grid" id="baseGrid"></div>
     <div class="toolbar" style="margin-top:14px;margin-bottom:0">
       <button id="btnAddBase">+ 新增基底</button>
@@ -803,7 +818,7 @@
   <!-- 配方 -->
   <section class="card" data-view="recipe">
     <h2>③ 配方与单碗成本 <span class="pill">按产品配置用量</span></h2>
-    <p class="desc">用量单位与原料库一致；按「个」采购又按「克」用的原料，可切换单位。明细默认收起，点箭头展开编辑。</p>
+    <p class="desc">用量单位与原料库一致；按「个」采购又按「克」用的原料，可切换单位。明细默认收起，点箭头展开编辑。原料多的时候，直接在「加入配方」框里打字搜名称（或分类，如「水果」）。</p>
     <div class="prod-grid" id="prodGrid"></div>
     <div class="toolbar" style="margin-top:14px;margin-bottom:0">
       <button id="btnAddProd">+ 新增产品</button>
@@ -1038,7 +1053,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v15 · 1533";
+  var BUILD = "v16 · 1550";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -1156,6 +1171,13 @@
     if(s.indexOf("base:") === 0){ var b = baseById(s.slice(5)); return (b && b.unit) || "g"; }
     var ing = ingById(s.indexOf("ing:") === 0 ? s.slice(4) : s);
     return (ing && ing.unit) || "g";
+  }
+  // "ing:i3" / "base:b1" → id
+  function stripRef(v){
+    var s = String(v||"");
+    if(s.indexOf("ing:") === 0) return s.slice(4);
+    if(s.indexOf("base:") === 0) return s.slice(5);
+    return s;
   }
   // 换算成"重/容"口径的克数，用于算出品率（个 → 乘每件净重）
   function toGrams(ing, amount, u){
@@ -2092,7 +2114,6 @@
     }
     grid.innerHTML = bases.map(function(b){
       var bb = baseBatch(b);
-      var ingOpts = state.ingredients.map(function(i){ return '<option value="'+i.id+'">'+esc(i.name)+'</option>'; }).join("");
       var rows = (b.recipe||[]).map(function(r){
         var ing = ingById(r.ingId != null ? r.ingId : r.refId);
         if(!ing) return "";
@@ -2128,7 +2149,8 @@
         +   '<tbody>'+rows+'</tbody>'
         +   '<tfoot><tr><td colspan="3">投料成本（每批）</td><td class="num" data-bmat="'+b.id+'">'+money(bb.mat)+'</td><td></td></tr></tfoot></table></div>'
         +   '<div class="add-row">'
-        +     '<select class="b-add-sel" style="width:auto;display:inline-block;vertical-align:middle">'+ingOpts+'</select> '
+        +     '<input type="text" class="b-add-sel" data-combo="ing" autocomplete="off" role="combobox" aria-expanded="false"'
+        +       ' placeholder="输入原料名搜索，如 牛奶" title="可以直接打字搜索，↑↓ 选择、回车确认">'
         +     '<input type="number" class="b-add-amt" step="any" min="0" placeholder="用量" style="width:90px;display:inline-block;vertical-align:middle"> '
         +     '<button class="mini b-add-btn">+ 加入投料</button>'
         +   '</div>'
@@ -2143,7 +2165,7 @@
     Array.prototype.forEach.call(grid.querySelectorAll(".bcard"), function(card){
       var sel = card.querySelector(".b-add-sel"), amt = card.querySelector(".b-add-amt");
       if(!sel || !amt) return;
-      var gi = ingById(sel.value);
+      var gi = ingById(stripRef(sel.getAttribute("data-v")) || sel.value);
       amt.placeholder = "用量(" + ((gi && gi.unit) || "g") + ")";
     });
   }
@@ -2213,15 +2235,6 @@
           + '</tr>';
       }).join("");
 
-      var opts = '<optgroup label="原料">'
-        + state.ingredients.map(function(i){ return '<option value="ing:'+i.id+'">'+esc(i.name)+'</option>'; }).join("")
-        + '</optgroup>'
-        + ((state.bases||[]).length
-            ? '<optgroup label="自制基底">' + state.bases.map(function(b){
-                return '<option value="base:'+b.id+'">'+esc(b.name)+'</option>';
-              }).join("") + '</optgroup>'
-            : '');
-
       var isOpenNow = isOpen(p.id);
       return '<div class="prod'+(isOpenNow?' open':'')+'" data-id="'+p.id+'">'
         + '<div class="p-head">'
@@ -2238,7 +2251,8 @@
         +   '<tbody>'+recipeRows+'</tbody>'
         +   '<tfoot><tr><td colspan="3">单碗原料成本</td><td class="num" data-total="'+p.id+'">'+money(rc.total)+'</td><td></td></tr></tfoot></table></div>'
         +   '<div class="add-row">'
-        +     '<select class="add-sel" style="width:auto;display:inline-block;vertical-align:middle">'+opts+'</select> '
+        +     '<input type="text" class="add-sel" data-combo="all" autocomplete="off" role="combobox" aria-expanded="false"'
+        +       ' placeholder="输入名称搜索，如 蓝莓 / 酸奶" title="可以直接打字搜索，↑↓ 选择、回车确认">'
         +     '<input type="number" class="add-amt" step="any" min="0" placeholder="用量" style="width:90px;display:inline-block;vertical-align:middle"> '
         +     '<button class="mini add-btn">+ 加入配方</button>'
         +   '</div>'
@@ -2256,7 +2270,7 @@
     Array.prototype.forEach.call(grid.querySelectorAll(".prod"), function(card){
       var sel = card.querySelector(".add-sel"), amt = card.querySelector(".add-amt");
       if(!sel || !amt) return;
-      amt.placeholder = "用量(" + refPlaceholder(sel.value) + ")";
+      amt.placeholder = "用量(" + refPlaceholder(sel.getAttribute("data-v") || sel.value) + ")";
     });
   }
 
@@ -2874,6 +2888,7 @@
   }
 
   function renderAll(){
+    if(typeof comboClose === "function") comboClose();   // 重绘会换掉搜索框，先把浮层收掉
     renderIngredients();
     renderBases();
     renderProducts();
@@ -2887,6 +2902,157 @@
     renderFirstRun();
     renderAbKpis();
     renderOverviewNote();
+  }
+
+  /* ---------- 原料选择器：打字搜索（原料一多，下拉框翻不动） ---------- */
+  var combo = { input:null, hi:-1 };
+
+  function comboItems(kind){
+    var out = [];
+    if(kind !== "base"){
+      state.ingredients.forEach(function(i){
+        var cat = (CATS[i.cat] || CATS.other).name;
+        out.push({
+          v:"ing:"+i.id, n:i.name, u:i.unit||"g",
+          s:cat + " · ¥" + ucText(i),
+          kw:(i.name + " " + cat + " " + (i.note||"")).toLowerCase()
+        });
+      });
+    }
+    if(kind !== "ing"){
+      (state.bases||[]).forEach(function(b){
+        var bb = baseBatch(b);
+        out.push({
+          v:"base:"+b.id, n:b.name, u:b.unit||"g",
+          s:"自制基底 · " + (bb.out>0 ? "¥"+num(bb.unit, bb.unit<1?4:2)+"/"+esc(b.unit||"g") : "待填产出量"),
+          kw:(b.name + " 基底 " + (b.note||"")).toLowerCase()
+        });
+      });
+    }
+    return out;
+  }
+  function comboFind(mode, kw){
+    var k = (kw||"").trim().toLowerCase();
+    var ings = comboItems("ing"), bases = (mode === "all") ? comboItems("base") : [];
+    if(!k) return { ings:ings.slice(0,12), bases:bases.slice(0,12) };
+    function f(a){ return a.filter(function(x){ return x.kw.indexOf(k) >= 0; }); }
+    return { ings:f(ings).slice(0,40), bases:f(bases).slice(0,40) };
+  }
+  function comboListEl(){
+    var el = document.getElementById("comboList");
+    if(el) return el;
+    el = document.createElement("div");
+    el.id = "comboList"; el.className = "combo-list"; el.hidden = true;
+    document.body.appendChild(el);
+    // 按下时阻止默认行为：输入框不会失焦，click 才能落到选项上
+    el.addEventListener("mousedown", function(e){ e.preventDefault(); });
+    el.addEventListener("click", function(e){
+      var it = e.target.closest ? e.target.closest(".ci[data-v]") : null;
+      if(it){ comboPick(it.getAttribute("data-v")); return; }
+      comboClose();   // 点空白处＝收起，免得挡住下面的按钮
+    });
+    return el;
+  }
+  function comboItemHtml(x){
+    return '<div class="ci" data-v="'+x.v+'" data-u="'+esc(x.u)+'" role="option">'
+      + '<span class="ci-n">'+esc(x.n)+'</span><span class="ci-s">'+esc(x.s)+'</span></div>';
+  }
+  function comboRender(){
+    var input = combo.input; if(!input) return;
+    var el = comboListEl();
+    var mode = input.getAttribute("data-combo") === "all" ? "all" : "ing";
+    var c = comboFind(mode, input.value);
+    var html = "";
+    if(c.ings.length){
+      if(mode === "all") html += '<div class="ci-g">原料</div>';
+      html += c.ings.map(comboItemHtml).join("");
+    }
+    if(c.bases.length) html += '<div class="ci-g">自制基底</div>' + c.bases.map(comboItemHtml).join("");
+    if(!html){
+      html = '<div class="ci-empty">没找到「'+esc(input.value)+'」。<br>换个关键词，或先去「① 原料库」加一条。</div>';
+    }
+    el.innerHTML = html;
+    combo.hi = -1;
+    comboPlace();
+  }
+  function comboPlace(){
+    var input = combo.input; if(!input) return;
+    var el = comboListEl();
+    var r = input.getBoundingClientRect();
+    var vw = window.innerWidth || 360, vh = window.innerHeight || 640;
+    // 手机上「用量 + 加入配方」会折到第二行：浮层要挂在这一行下面，别把按钮盖住
+    var row = input.closest(".add-row");
+    var rr = row ? row.getBoundingClientRect() : null;
+    var anchorBottom = (rr && rr.bottom > r.bottom + 6) ? rr.bottom : r.bottom;
+    var below = vh - anchorBottom - 10, above = r.top - 10;
+    var h = Math.min(300, Math.max(150, below >= above ? below : above));
+    var w = Math.min(Math.max(r.width || 200, 220), vw - 16);
+    var left = Math.min(Math.max(r.left, 8), vw - w - 8);
+    var top = (below >= 150 || below >= above) ? anchorBottom + 4 : Math.max(8, r.top - h - 4);
+    el.style.left = Math.round(left) + "px";
+    el.style.top = Math.round(top) + "px";
+    el.style.width = Math.round(w) + "px";
+    el.style.maxHeight = Math.round(h) + "px";
+  }
+  function comboOpen(input){
+    combo.input = input;
+    comboListEl().hidden = false;
+    input.setAttribute("aria-expanded", "true");
+    comboRender();
+  }
+  function comboClose(){
+    var el = document.getElementById("comboList");
+    if(el) el.hidden = true;
+    if(combo.input) combo.input.setAttribute("aria-expanded", "false");
+    combo.input = null; combo.hi = -1;
+  }
+  function comboPick(v){
+    var input = combo.input; if(!input) return;
+    var el = document.getElementById("comboList");
+    var it = el && el.querySelector('.ci[data-v="'+v+'"]');
+    input.setAttribute("data-v", v);
+    var row = input.closest(".add-row");
+    var amt = row && row.querySelector(".add-amt, .b-add-amt");
+    if(it){
+      var nm = it.querySelector(".ci-n");
+      input.value = nm ? nm.textContent : input.value;
+      if(amt) amt.placeholder = "用量(" + (it.getAttribute("data-u") || "g") + ")";
+    }
+    comboClose();
+    if(amt){ try{ amt.focus(); }catch(e){} }
+  }
+  // 没点选项、只打了字就按「加入」：名字对得上就直接用，对不上返回空
+  function comboResolve(input){
+    var v = input.getAttribute("data-v");
+    if(v) return v;
+    var t = (input.value||"").trim().toLowerCase();
+    if(!t) return "";
+    var mode = input.getAttribute("data-combo") === "all" ? "all" : "ing";
+    var c = comboFind(mode, t);
+    var all = c.ings.concat(c.bases);
+    var exact = all.filter(function(x){ return x.n.toLowerCase() === t; });
+    return exact.length === 1 ? exact[0].v : (all.length === 1 ? all[0].v : "");
+  }
+  function comboKeydown(e){
+    var input = combo.input;
+    if(!input || e.target !== input) return;
+    var el = comboListEl();
+    var items = Array.prototype.slice.call(el.querySelectorAll(".ci[data-v]"));
+    if(e.key === "ArrowDown" || e.key === "ArrowUp"){
+      if(!items.length) return;
+      e.preventDefault();
+      combo.hi += (e.key === "ArrowDown" ? 1 : -1);
+      if(combo.hi < 0) combo.hi = items.length - 1;
+      if(combo.hi >= items.length) combo.hi = 0;
+      items.forEach(function(it,i){ it.classList[i===combo.hi?"add":"remove"]("hi"); });
+      var cur = items[combo.hi];
+      if(cur && cur.scrollIntoView) cur.scrollIntoView({block:"nearest"});
+    } else if(e.key === "Enter"){
+      if(combo.hi >= 0 && items[combo.hi]){ e.preventDefault(); comboPick(items[combo.hi].getAttribute("data-v")); }
+    } else if(e.key === "Escape"){ comboClose(); }
+  }
+  function isComboInput(el){
+    return !!el && !!el.classList && (el.classList.contains("add-sel") || el.classList.contains("b-add-sel"));
   }
 
   /* ---------- 模块切换 ---------- */
@@ -2942,6 +3108,31 @@
       if(b) b.style.display = "none";
       try{ localStorage.setItem("yogurt-wxtip","1"); }catch(e){}
     });
+
+    // 原料搜索选择器：点在哪个「加入配方 / 加入投料」输入框上就为它开
+    document.addEventListener("focusin", function(e){
+      if(isComboInput(e.target)) comboOpen(e.target);
+    });
+    document.addEventListener("input", function(e){
+      if(!isComboInput(e.target)) return;
+      if(combo.input !== e.target) comboOpen(e.target);
+      else comboRender();
+    });
+    document.addEventListener("keydown", comboKeydown);
+    document.addEventListener("mousedown", function(e){
+      if(!combo.input) return;
+      if(e.target === combo.input) return;
+      var el = document.getElementById("comboList");
+      if(el && el.contains(e.target)) return;
+      comboClose();
+    });
+    window.addEventListener("scroll", function(){
+      if(combo.input){
+        if(!combo.input.isConnected) comboClose();
+        else comboPlace();
+      }
+    }, true);
+    window.addEventListener("resize", function(){ if(combo.input) comboPlace(); });
 
     // 原料库
     var priceEditFrom = null;
@@ -3052,11 +3243,6 @@
         if(r){ r.u = e.target.value; save(); refresh(); renderProducts(); }
         return;
       }
-      if(e.target.className.indexOf("add-sel")>=0){
-        var gi = ingById(e.target.value);
-        var amtEl = card.querySelector(".add-amt");
-        if(gi && amtEl) amtEl.placeholder = "用量("+(gi.unit||"g")+")";
-      }
     });
     grid.addEventListener("click", function(e){
       var card = e.target.closest(".prod[data-id]"); if(!card) return;
@@ -3079,8 +3265,9 @@
       }
       if(e.target.className.indexOf("add-btn")>=0){
         var sel = card.querySelector(".add-sel"), amt = card.querySelector(".add-amt");
-        var val = sel.value, amount = parseFloat(amt.value);
-        if(!val || isNaN(amount) || amount<=0){ alert("请选择原料或基底，并填写用量"); return; }
+        var val = comboResolve(sel), amount = parseFloat(amt.value);
+        if(!val){ alert("先在搜索框里点选一个原料或基底（输入名称就能筛选）"); return; }
+        if(isNaN(amount) || amount<=0){ alert("请填写用量"); return; }
         if(val.indexOf("base:") === 0){
           p.recipe.push({id:uid("r"), kind:"base", refId:val.slice(5), amount:amount, u:"g"});
         }else{
@@ -3135,8 +3322,9 @@
       }
       if(e.target.className.indexOf("b-add-btn")>=0){
         var sel = card.querySelector(".b-add-sel"), amt = card.querySelector(".b-add-amt");
-        var ingId = sel.value, amount = parseFloat(amt.value);
-        if(!ingId || isNaN(amount) || amount<=0){ alert("请选择原料并填写用量"); return; }
+        var ingId = stripRef(comboResolve(sel)), amount = parseFloat(amt.value);
+        if(!ingId){ alert("先在搜索框里点选一个原料（输入名称就能筛选）"); return; }
+        if(isNaN(amount) || amount<=0){ alert("请填写用量"); return; }
         var ing = ingById(ingId);
         b.recipe.push({id:uid("r"), ingId:ingId, refId:ingId, amount:amount, u:(ing? (ing.unit||"g") : "g")});
         amt.value = "";
@@ -3172,10 +3360,6 @@
         var rid = tr.getAttribute("data-rid");
         (b.recipe||[]).forEach(function(r){ if(r.id===rid) r.u = e.target.value; });
         save(); renderAll(); return;
-      }
-      if((e.target.className||"").indexOf("b-add-sel")>=0){
-        var sel = card.querySelector(".b-add-sel"), amt = card.querySelector(".b-add-amt");
-        if(sel && amt){ var gi = ingById(sel.value); amt.placeholder = "用量(" + ((gi && gi.unit) || "g") + ")"; }
       }
     });
 
