@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=26">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=26">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=26">
+<link rel="manifest" href="manifest.json?v=27">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=27">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=27">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -128,7 +128,7 @@
 
   /* 产品卡 */
   .prod-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:12px;}
-  /* 配方页：按分类（酸奶碗 / 酸奶昔 / 饮品 / 三明治）分组 */
+  /* 配方页：按分类（酸奶碗 / 酸奶罐罐 / 酸奶昔 / 饮品 / 三明治）分组 */
   .pgroup{margin-bottom:8px;}
   .pgroup:last-child{margin-bottom:0;}
   /* v25：分组标题做成整条「分类横条」——浅青底 + 左色条 + 深青字，全站分类标签统一语言 */
@@ -900,7 +900,7 @@
   <!-- 配方 -->
   <section class="card" data-view="recipe">
     <h2>③ 配方与单碗成本 <span class="pill">按产品配置用量</span></h2>
-    <p class="desc">产品按 <b>酸奶碗 / 酸奶昔 / 饮品 / 三明治</b> 分组；展开卡片，在「分类」里可以把它挪到别的组，也可以直接点各组的「+ 新增」。用量单位与原料库一致；按「个」采购又按「克」用的原料，可切换单位。明细默认收起，点箭头展开编辑。原料多的时候，直接在「加入配方」框里打字搜名称（或分类，如「水果」）。</p>
+    <p class="desc">产品按 <b>酸奶碗 / 酸奶罐罐 / 酸奶昔 / 饮品 / 三明治</b> 分组；展开卡片，在「分类」里可以把它挪到别的组，也可以直接点各组的「+ 新增」。用量单位与原料库一致；按「个」采购又按「克」用的原料，可切换单位。明细默认收起，点箭头展开编辑。原料多的时候，直接在「加入配方」框里打字搜名称（或分类，如「水果」）。</p>
     <div class="pg-wrap" id="prodGrid"></div>
     <div class="toolbar" style="margin-top:14px;margin-bottom:0">
       <button id="btnAddProd">+ 新增产品（酸奶碗）</button>
@@ -1141,7 +1141,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v26 · 2026";
+  var BUILD = "v27 · 2038";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -1153,9 +1153,10 @@
   var COLORS = ["#0d9488","#2563eb","#e11d48","#f59e0b","#7c3aed","#0891b2","#65a30d","#db2777","#ea580c","#4f46e5","#059669","#a16207"];
   var BASE_COLOR = "#ba7517";   // 自制在成本条里的颜色
 
-  /* 产品分类：配方页按这个分组（v18 起，v24 加「饮品」） */
+  /* 产品分类：配方页按这个分组（v18 起，v24 加「饮品」，v27 加「酸奶罐罐」） */
   var PROD_CATS = [
     {k:"bowl",     n:"酸奶碗"},
+    {k:"jar",      n:"酸奶罐罐"},
     {k:"smoothie", n:"酸奶昔"},
     {k:"drink",    n:"饮品"},
     {k:"sandwich", n:"三明治"},
@@ -1168,7 +1169,9 @@
     var n = String((p && p.name) || "");
     if(/昔|冰沙|smoothie|奶昔/i.test(n)) return "smoothie";
     if(/三明治|吐司|贝果|可颂|卷|堡|sandwich/i.test(n)) return "sandwich";
-    // 饮品：放在两个主食类之后兜底，避免「三明治套餐+柠檬茶」这类名字被抢走
+    // 酸奶罐罐：放在主食类之后、饮品之前，「罐」字很专属，不会抢走别的
+    if(/罐|罐罐|jar|杯子蛋糕|杯装/i.test(n)) return "jar";
+    // 饮品：放在主食 / 罐罐之后兜底，避免「三明治套餐+柠檬茶」这类名字被抢走
     if(/饮|茶|咖啡|美式|拿铁|卡布|可可|气泡|苏打|果汁|奶盖|柠檬水|drink|coffee|latte|tea/i.test(n)) return "drink";
     return "bowl";
   }
@@ -2557,8 +2560,8 @@
   function renderProducts(){
     var grid = document.getElementById("prodGrid");
     if(!state.products.length){ grid.innerHTML='<div class="empty">还没有产品，点下方「新增产品」</div>'; return; }
-    // 分类顺序固定：酸奶碗 → 酸奶昔 → 饮品 → 三明治 → 其他
-    // 「其他」没有内容就不显示；四个主分类即使为空也留着，好让用户直接往里加
+    // 分类顺序固定：酸奶碗 → 酸奶罐罐 → 酸奶昔 → 饮品 → 三明治 → 其他
+    // 「其他」没有内容就不显示；五个主分类即使为空也留着，好让用户直接往里加
     grid.innerHTML = PROD_CATS.map(function(c){
       var list = state.products.filter(function(p){ return prodCatOf(p) === c.k; });
       if(!list.length && c.k === "other") return "";
