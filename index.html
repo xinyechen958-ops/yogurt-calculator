@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=27">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=27">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=27">
+<link rel="manifest" href="manifest.json?v=28">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=28">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=28">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -879,9 +879,10 @@
   <!-- 自制库 -->
   <section class="card" data-view="base">
     <h2>② 自制库 <span class="pill">一锅一锅做的半成品</span></h2>
-    <p class="desc">按五类分开管：<b>自制酸奶底</b>（原味/希腊/椰子…）、<b>自制果酱</b>、<b>自制风味水果</b>（糖渍/酒渍/茶渍…）、<b>自制麦片</b>、<b>自制冻冻</b>。填投料 + 每批产出量，自动算出品率和每克成本；在配方里就能像原料一样直接取用。投料也是打字搜索，不用在长列表里翻。</p>
+    <p class="desc">按五类分开管：<b>自制酸奶底</b>（原味/希腊/椰子…）、<b>自制果酱</b>、<b>自制风味水果</b>（糖渍/酒渍/茶渍…）、<b>自制麦片</b>、<b>自制冻冻</b>。填投料 + 每批产出量，自动算出品率和每克成本；在配方里就能像原料一样直接取用。投料也是打字搜索，不用在长列表里翻。<br><b>+ 预拌酸奶</b> 是一键模板：点一下直接建好「预拌酸奶」，并自动把「自制原味酸奶（有糖）」加进投料（原料库里没有会顺手建一条）。</p>
     <div class="pg-wrap" id="baseGrid"></div>
     <div class="toolbar" style="margin-top:14px;margin-bottom:0">
+      <button id="btnAddPremix" class="ghost">+ 预拌酸奶</button>
       <button id="btnAddBase">+ 新增自制</button>
       <button id="btnSaveBase" class="primary">保存并同步</button>
       <span id="baseState" class="save-state">改动会自动存本机；点「保存并同步」可立刻上传到云端</span>
@@ -1141,7 +1142,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v27 · 2038";
+  var BUILD = "v28 · 2052";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -3757,6 +3758,77 @@
     document.getElementById("btnAddProd").addEventListener("click", function(){ addProduct("bowl"); });
 
     /* ---------- 自制页交互 ---------- */
+    /* ---------- 自制快捷模板（v28）----------
+       点一下就按预设建好一项，投料自动带上默认原料，不用每次再搜一遍 */
+    var BASE_PRESETS = [
+      {k:"premix", n:"预拌酸奶", cat:"yogurt", unit:"g", out:1000,
+       ings:[{name:"自制原味酸奶（有糖）", amount:1000}]}
+    ];
+    function presetByKey(k){
+      for(var i=0;i<BASE_PRESETS.length;i++){ if(BASE_PRESETS[i].k === k) return BASE_PRESETS[i]; }
+      return null;
+    }
+    // 松一点的写法：全角/半角括号、连字符这类符号都不影响比对
+    function looseName(s){
+      return normName(s).replace(/[\s()（）\[\]【】{}<>《》·．.,，、；;:：\-_/\\|"'“”‘’]/g, "");
+    }
+    // 按名字找原料：全等 → 松写法全等 → 去掉「自制」前缀再比 → 互相包含
+    function findIngByName(t){
+      var want = normName(t); if(!want) return null;
+      var wLoose = looseName(t);
+      var ings = state.ingredients || [], i, n;
+      for(i=0;i<ings.length;i++){ if(normName(ings[i].name) === want) return ings[i]; }
+      for(i=0;i<ings.length;i++){ if(looseName(ings[i].name) === wLoose) return ings[i]; }
+      var short = wLoose.replace(/^自制/, "");
+      if(short && short !== wLoose){
+        for(i=0;i<ings.length;i++){ if(looseName(ings[i].name) === short) return ings[i]; }
+      }
+      for(i=0;i<ings.length;i++){
+        n = looseName(ings[i].name);
+        if(n && (n.indexOf(wLoose) >= 0 || wLoose.indexOf(n) >= 0)) return ings[i];
+      }
+      return null;
+    }
+    function addBasePreset(k){
+      var ps = presetByKey(k); if(!ps) return null;
+      var cat = baseCatValid(ps.cat) ? ps.cat : "yogurt";
+      // 已经有同名的就不重复建，带用户过去就好
+      var same = null;
+      (state.bases || []).forEach(function(b){ if(!same && normName(b.name) === normName(ps.n)) same = b; });
+      if(same){
+        alert("自制库里已经有「" + same.name + "」了，已帮你定位过去。");
+        renderBases();
+        var el0 = document.querySelector('#baseGrid .bcard[data-id="' + same.id + '"]');
+        if(el0 && el0.scrollIntoView) el0.scrollIntoView({block:"center", behavior:"smooth"});
+        flashEl(el0);
+        return same;
+      }
+      var recipe = [], made = [];
+      (ps.ings || []).forEach(function(it){
+        var ing = findIngByName(it.name);
+        if(!ing){   // 原料库里没有：顺手建一条，建完提示去填采购价
+          ing = {id:uid("i"), name:it.name, cat:"base", size:1000, unit:"g", price:0, note:"", eachG:0};
+          state.ingredients.push(ing);
+          made.push(it.name);
+        }
+        recipe.push({id:uid("r"), ingId:ing.id, refId:ing.id, amount:it.amount, u:(ing.unit || "g")});
+      });
+      // 原料是自动补的：备注里留一句，关掉提示也不会忘
+      var b = {id:uid("b"), name:ps.n, cat:cat, unit:ps.unit || "g", out:ps.out || 0, supplies:0,
+        note:(made.length ? "「" + made.join("、") + "」的采购价还是 0，先去原料库填上" : ""),
+        recipe:recipe};
+      state.bases.push(b);
+      save(); renderAll();
+      var el = document.querySelector('#baseGrid .bcard[data-id="' + b.id + '"]');
+      if(el && el.scrollIntoView) el.scrollIntoView({block:"center", behavior:"smooth"});
+      if(made.length){
+        alert("已新增「" + ps.n + "」。\n\n原料库里没找到「" + made.join("、")
+          + "」，已顺手建了一条（采购价 0）。记得去「① 原料库」填上规格和价格，成本才会算准。");
+      }
+      return b;
+    }
+    document.getElementById("btnAddPremix").addEventListener("click", function(){ addBasePreset("premix"); });
+
     var BASE_NEW_NAME = {yogurt:"新酸奶底", jam:"新果酱", fruit:"新风味水果", granola:"新麦片", jelly:"新冻冻"};
     function addBase(cat){
       if(!state.ingredients.length){ alert("先在「① 原料库」里添加原料（牛奶、菌种等），再来录自制半成品。"); return; }
