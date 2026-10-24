@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=13">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=13">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=13">
+<link rel="manifest" href="manifest.json?v=14">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=14">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=14">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -168,6 +168,16 @@
   .mix-d summary::before{content:"\25B8";font-size:10px;transition:transform .15s;}
   .mix-d[open] summary::before{transform:rotate(90deg);}
   .mix-d summary:hover{color:var(--accent);}
+  /* 基底（自制半成品）卡片 */
+  .prod.bcard .p-head{grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"name meta del";}
+  .b-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;padding:4px 0 8px;}
+  .b-form label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--text-3);}
+  .b-form input{padding:6px 8px;border:1px solid #e0e6ed;border-radius:8px;font-size:13px;background:#fcfdfe;width:100%;min-width:0;}
+  .b-form input:focus{background:#fff;}
+  .tag-base{display:inline-block;margin-left:6px;font-size:10px;line-height:1.6;padding:0 5px;
+    border-radius:5px;background:#fdf1dc;color:#8a5a12;vertical-align:middle;white-space:nowrap;}
+  .b-empty{color:var(--text-3);font-size:13px;padding:8px 0;line-height:1.7;}
+  .b-warn{color:var(--berry);}
   .src-chip{display:inline-block;vertical-align:middle;margin-left:6px;
     font-size:10.5px;font-weight:600;letter-spacing:.2px;
     padding:2px 8px;border-radius:999px;white-space:nowrap;cursor:pointer;
@@ -640,6 +650,7 @@
   }
   /* 390px 是最常见的手机宽度，这里仍保持两列，只把卡片收紧 */
   @media (max-width:400px){
+    .tab{padding:9px 8px;font-size:12.5px;}   /* 9 个标签在 390px 下也能一屏放下 */
     .kpis{gap:8px;}
     .kpi{padding:10px;border-radius:9px;}
     .kpi .k-label{font-size:11px;line-height:1.25;}
@@ -673,6 +684,7 @@
     <nav class="tabs" id="tabs">
       <button class="tab active" data-tab="overview">概览</button>
       <button class="tab" data-tab="ing">原料</button>
+      <button class="tab" data-tab="base">基底</button>
       <button class="tab" data-tab="recipe">配方</button>
       <button class="tab" data-tab="price">售价</button>
       <button class="tab" data-tab="biz">经营</button>
@@ -743,9 +755,30 @@
     </details>
   </section>
 
+  <!-- 基底库 -->
+  <section class="card" data-view="base">
+    <h2>② 基底库 <span class="pill">一锅一锅做的半成品</span></h2>
+    <p class="desc">自制酸奶底、希腊酸奶、格兰诺拉这类「先做一批、再按克用」的半成品，单独在这里录。填投料 + 每批产出量，自动算出品率和每克成本；在配方里就能像原料一样直接取用。</p>
+    <div class="prod-grid" id="baseGrid"></div>
+    <div class="toolbar" style="margin-top:14px;margin-bottom:0">
+      <button id="btnAddBase">+ 新增基底</button>
+      <button id="btnSaveBase" class="primary">保存并同步</button>
+      <span id="baseState" class="save-state">改动会自动存本机；点「保存并同步」可立刻上传到云端</span>
+    </div>
+    <details class="mix-d" style="margin-top:12px">
+      <summary>出品率和单位成本怎么算</summary>
+      <div class="note" style="margin-top:4px">
+        投料总量 = 各行用量折算成 g 后相加（按「个」投料的会乘上「每件≈」的克数）。<br>
+        出品率 = 每批产出量 ÷ 投料总量。5L 牛奶出 4.6kg 酸奶，就是 92%，损耗已经摊进单价了。<br>
+        每批总成本 = 投料成本 + 其它耗材（菌种、滤网等没进原料库的）。<br>
+        单位成本 = 每批总成本 ÷ 每批产出量。产品用了基底，用量会自动折回牛奶、菌种等原料上，采购量和涨价模拟都按这个算。
+      </div>
+    </details>
+  </section>
+
   <!-- 配方 -->
   <section class="card" data-view="recipe">
-    <h2>② 配方与单碗成本 <span class="pill">按产品配置用量</span></h2>
+    <h2>③ 配方与单碗成本 <span class="pill">按产品配置用量</span></h2>
     <p class="desc">用量单位与原料库一致；按「个」采购又按「克」用的原料，可切换单位。明细默认收起，点箭头展开编辑。</p>
     <div class="prod-grid" id="prodGrid"></div>
     <div class="toolbar" style="margin-top:14px;margin-bottom:0">
@@ -757,7 +790,7 @@
 
   <!-- 售价 -->
   <section class="card" data-view="price">
-    <h2>③ 售价与单碗毛利</h2>
+    <h2>④ 售价与单碗毛利</h2>
     <p class="desc">售价、日销量可随时调整；包装成本和平台抽佣在这里计入毛利。</p>
     <div class="scroll-x cards">
       <table id="priceTable">
@@ -783,7 +816,7 @@
 
   <!-- 经营测算 -->
   <section class="card" data-view="biz">
-    <h2>④ 固定成本与月度经营测算</h2>
+    <h2>⑤ 固定成本与月度经营测算</h2>
     <p class="desc">填固定开支，自动算月净利和「每天卖多少碗才不亏」；改数字，上方结论实时更新。</p>
     <div id="bizSummary"></div>
     <div class="note" id="beNote" style="margin:12px 0 18px"></div>
@@ -825,7 +858,7 @@
 
   <!-- 敏感度 -->
   <section class="card" data-view="sim">
-    <h2>⑤ 价格波动模拟 <span class="pill">水果涨价怎么办</span></h2>
+    <h2>⑥ 价格波动模拟 <span class="pill">水果涨价怎么办</span></h2>
     <p class="desc">给原料设置涨/跌幅，看看对单碗成本和月度净利的影响。这是纯模拟，不会改动你的实际采购价。</p>
     <div class="simbar">
       <label class="nowrap" style="font-size:13px">全部原料统一变动</label>
@@ -858,7 +891,7 @@
 
   <!-- 每日记账 -->
   <section class="card" data-view="log">
-    <h2>⑥ 每日记账 <span class="pill">实际卖了什么</span></h2>
+    <h2>⑦ 每日记账 <span class="pill">实际卖了什么</span></h2>
     <p class="desc">每天记一次各产品实际卖了几碗，才知道「计划」和「现实」差多少。默认已带出计划销量，改数字即可；毛利按当前成本与售价估算。</p>
     <div class="d-top">
       <div class="field"><label>日期</label><input type="date" id="dDate"></div>
@@ -893,14 +926,14 @@
 
   <!-- 调价记录 -->
   <section class="card" data-view="data">
-    <h2>⑦ 调价记录</h2>
+    <h2>⑧ 调价记录</h2>
     <p class="desc">每次修改采购价会自动留痕，方便回头核对是哪些原料在推高成本。</p>
     <div class="log" id="logBox"></div>
   </section>
 
   <!-- 云端同步 -->
   <section class="card" data-view="data">
-    <h2>⑧ 云端同步 <span class="pill" id="syncPill">未开启</span></h2>
+    <h2>⑨ 云端同步 <span class="pill" id="syncPill">未开启</span></h2>
     <p class="desc">开启后，电脑和任意几台手机都读写同一个私有仓库里的数据文件：改一处，其他设备下次打开就是最新数据。</p>
     <details class="setup" id="setupBox">
       <summary>首次配置：三步开启同步</summary>
@@ -950,7 +983,7 @@
   </section>
 
   <section class="card" data-view="data">
-    <h2>⑨ 备份与打印</h2>
+    <h2>⑩ 备份与打印</h2>
     <p class="desc">导出/导入是「手动搬运」，适合没开云端同步时换设备，或做一份离线存档。</p>
     <div class="btn-row">
       <button id="btnExport">导出数据</button>
@@ -979,7 +1012,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v13 · 1502";
+  var BUILD = "v14 · 1526";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -989,6 +1022,7 @@
     other:{name:"其他配料",cls:"other"}
   };
   var COLORS = ["#0d9488","#2563eb","#e11d48","#f59e0b","#7c3aed","#0891b2","#65a30d","#db2777","#ea580c","#4f46e5","#059669","#a16207"];
+  var BASE_COLOR = "#ba7517";   // 基底在成本条里的颜色
 
   var state = null;
   var ingOpen = {};   // 窄屏下哪些原料行处于展开态（仅界面状态，不写盘）
@@ -1019,9 +1053,10 @@
       I("无花果","fruit",500,"g",36,"")
     ];
     function P(name,price,daily,recipe){ return {id:uid("p"),name:name,price:price,daily:daily,ch:"",rate:null,recipe:recipe}; }
-    function R(idx,amount){ return {ingId:ings[idx].id, amount:amount}; }
+    function R(idx,amount){ return {id:uid("r"), kind:"ing", refId:ings[idx].id, ingId:ings[idx].id, amount:amount}; }
     return {
       ingredients: ings,
+      bases: [],
       products: [
         P("经典希腊酸奶碗",32,7,[R(0,180),R(2,30),R(4,15),R(10,10),R(12,20),R(13,30)]),
         P("莓果盈盈碗",38,5,[R(0,180),R(2,25),R(4,12),R(8,15),R(12,40),R(13,40)]),
@@ -1059,7 +1094,7 @@
 
   // 配方用量按所选计量单位换算回「原料采购单位」
   function amtInIngUnit(r){
-    var ing = ingById(r.ingId); if(!ing) return (+r.amount)||0;
+    var ing = ingById(r.ingId != null ? r.ingId : r.refId); if(!ing) return (+r.amount)||0;
     var a = (+r.amount)||0, u = r.u || ing.unit;
     if(u === ing.unit) return a;
     if(ing.unit === "个" && (u === "g" || u === "ml") && ing.eachG > 0) return a / ing.eachG;
@@ -1071,16 +1106,111 @@
     return uc;
   }
 
+  /* ---------- 基底（自制半成品，介于原料和产品之间） ---------- */
+  function baseById(id){
+    for(var i=0;i<(state.bases||[]).length;i++){ if(state.bases[i].id===id) return state.bases[i]; }
+    return null;
+  }
+  // 配方行指向的是原料还是基底（兼容老数据只写 ingId 的情况）
+  function rowKind(r){ return r && r.kind === "base" ? "base" : "ing"; }
+  function rowRefId(r){ return r ? (r.refId != null ? r.refId : r.ingId) : null; }
+  function rowIsBase(r){ return rowKind(r) === "base"; }
+  // 该行的"计价单位"：原料用它自己的单位，基底统一用 g/ml
+  function rowUnit(r){
+    if(rowIsBase(r)){ var b = baseById(rowRefId(r)); return (b && b.unit) || "g"; }
+    var ing = ingById(rowRefId(r)); return (ing && ing.unit) || "g";
+  }
+  function rowName(r){
+    if(rowIsBase(r)){ var b = baseById(rowRefId(r)); return b ? b.name : "（已删除的基底）"; }
+    var ing = ingById(rowRefId(r)); return ing ? ing.name : "（已删除的原料）";
+  }
+  // 下拉值形如 "ing:i3" / "base:b1"，返回它对应的计量单位
+  function refPlaceholder(val){
+    var s = String(val||"");
+    if(s.indexOf("base:") === 0){ var b = baseById(s.slice(5)); return (b && b.unit) || "g"; }
+    var ing = ingById(s.indexOf("ing:") === 0 ? s.slice(4) : s);
+    return (ing && ing.unit) || "g";
+  }
+  // 换算成"重/容"口径的克数，用于算出品率（个 → 乘每件净重）
+  function toGrams(ing, amount, u){
+    var a = (+amount)||0;
+    if(u === "g" || u === "ml") return a;
+    if(u === "个") return a * ((+ing.eachG)||0);
+    return 0;
+  }
+  // 一批基底的核算：投料成本 + 其它耗材 → 摊到产出量上
+  function baseBatch(b){
+    var mat=0, inG=0, rows=[];
+    (b.recipe||[]).forEach(function(r){
+      var ing = ingById(r.ingId != null ? r.ingId : r.refId);
+      if(!ing) return;
+      var c = amtInIngUnit(r) * unitCost(ing);
+      mat += c;
+      inG += toGrams(ing, r.amount, r.u || ing.unit);
+      rows.push({ing:ing, amount:r.amount, u:(r.u||ing.unit), cost:c});
+    });
+    var supplies = (+b.supplies)||0;
+    var out = (+b.out)||0;
+    var total = mat + supplies;
+    return {
+      mat:mat, supplies:supplies, total:total, out:out, inG:inG, rows:rows,
+      yieldRate: inG > 0 ? out / inG : 0,
+      unit: out > 0 ? total / out : 0
+    };
+  }
+  function baseUnitCost(b){ return baseBatch(b).unit; }
+  // 每一行（原料或基底）的单位价格与计价数量
+  function rowUnitCost(r){
+    if(rowIsBase(r)){ var b = baseById(rowRefId(r)); return b ? baseUnitCost(b) : 0; }
+    var ing = ingById(rowRefId(r)); return ing ? unitCost(ing) : 0;
+  }
+  function rowUnitCostIn(r){
+    if(rowIsBase(r)){ var b = baseById(rowRefId(r)); return b ? baseUnitCost(b) : 0; }
+    var ing = ingById(rowRefId(r));
+    return ing ? unitCostIn(ing, r.u || ing.unit) : 0;
+  }
+  // 换算到计价单位的数量（基底本身就是 g/ml，直接用）
+  function rowAmt(r){
+    if(rowIsBase(r)) return (+r.amount)||0;
+    return amtInIngUnit(r);
+  }
+  function rowCost(r){
+    return rowAmt(r) * rowUnitCost(r);
+  }
+  // 1 单位基底里含多少某原料，用于把用量拆回原料（采购量才准）
+  function baseIngPerUnit(b, ingId){
+    var bb = baseBatch(b), out = bb.out;
+    if(out <= 0) return 0;
+    var per = 0;
+    (b.recipe||[]).forEach(function(r){
+      if((r.ingId != null ? r.ingId : r.refId) !== ingId) return;
+      var ing = ingById(ingId);
+      per += amtInIngUnit(r) / out;
+    });
+    return per;
+  }
+
   // factor: 模拟系数（默认 1）
   function recipeCost(product, factorMap){
     var total=0, rows=[];
     for(var i=0;i<product.recipe.length;i++){
-      var r=product.recipe[i], ing=ingById(r.ingId);
+      var r=product.recipe[i];
+      var refId = rowRefId(r);
+      if(rowIsBase(r)){
+        var b = baseById(refId);
+        if(!b) continue;
+        var fb = (factorMap && factorMap["b:"+refId]!=null) ? factorMap["b:"+refId] : 1;
+        var cb = rowAmt(r) * baseUnitCost(b) * fb;
+        total += cb;
+        rows.push({base:b, isBase:true, name:b.name, amount:r.amount, u:(b.unit||"g"), cost:cb});
+        continue;
+      }
+      var ing=ingById(refId);
       if(!ing) continue;
-      var f = (factorMap && factorMap[r.ingId]!=null) ? factorMap[r.ingId] : 1;
+      var f = (factorMap && factorMap[refId]!=null) ? factorMap[refId] : 1;
       var c = amtInIngUnit(r) * unitCost(ing) * f;
       total += c;
-      rows.push({ing:ing, amount:r.amount, u:(r.u||ing.unit), cost:c});
+      rows.push({ing:ing, isBase:false, name:ing.name, amount:r.amount, u:(r.u||ing.unit), cost:c});
     }
     return {total:total, rows:rows};
   }
@@ -1120,14 +1250,24 @@
     };
   }
 
+  // 原料月用量：产品里直接用的原料 + 通过基底间接消耗的原料（拆回原料，采购量才准）
   function monthlyUsage(){
     var map={};
+    function add(id, n){ if(!id) return; if(map[id]==null) map[id]=0; map[id]+=n; }
     for(var i=0;i<state.products.length;i++){
       var p=state.products[i], v=monthVolume(p);
       for(var j=0;j<p.recipe.length;j++){
         var r=p.recipe[j];
-        if(!map[r.ingId]) map[r.ingId]=0;
-        map[r.ingId] += amtInIngUnit(r) * v;
+        if(rowIsBase(r)){
+          var b = baseById(rowRefId(r)); if(!b) continue;
+          var amt = rowAmt(r) * v;                 // 这个月要用多少 g 基底
+          (b.recipe||[]).forEach(function(br){
+            var ingId = br.ingId != null ? br.ingId : br.refId;
+            add(ingId, amt * baseIngPerUnit(b, ingId));
+          });
+        }else{
+          add(rowRefId(r), amtInIngUnit(r) * v);
+        }
       }
     }
     return map;
@@ -1229,6 +1369,24 @@
     // 兼容旧数据：配方行补 id、原料补 eachG
     s.ingredients.forEach(function(i){ if(i.eachG==null) i.eachG = 0; });
     s.products.forEach(function(p){ (p.recipe||[]).forEach(function(r){ if(!r.id) r.id = uid("r"); }); });
+    // 基底（自制半成品）：v14 新增，老数据没有这个字段
+    s.bases = Array.isArray(s.bases) ? s.bases : [];
+    s.bases.forEach(function(b){
+      if(!b.id) b.id = uid("b");
+      if(!b.unit) b.unit = "g";
+      if(b.out == null) b.out = 0;
+      if(b.supplies == null) b.supplies = 0;
+      if(b.note == null) b.note = "";
+      b.recipe = Array.isArray(b.recipe) ? b.recipe : [];
+      b.recipe.forEach(function(r){ if(!r.id) r.id = uid("r"); });
+    });
+    // 配方行：旧格式 {ingId} → 新格式 {kind:"ing"|"base", refId}；老数据一律是原料
+    s.products.forEach(function(p){
+      (p.recipe||[]).forEach(function(r){
+        if(r.refId == null) r.refId = r.ingId;
+        if(r.kind !== "base") r.kind = "ing";
+      });
+    });
     return s;
   }
   function save(opts){
@@ -1895,6 +2053,96 @@
     return '<span data-utext="'+ing.id+'">'+(ing.unit||"g")+'</span>';
   }
 
+  /* ---------- 渲染：基底库 ---------- */
+  function renderBases(){
+    var grid = document.getElementById("baseGrid");
+    if(!grid) return;
+    var bases = state.bases || [];
+    if(!bases.length){
+      grid.innerHTML = '<div class="b-empty">还没有基底。点下方「新增基底」，把自制酸奶底、希腊酸奶这类'
+        + '<b>先做一批再按克用</b>的半成品录进来。<br>'
+        + '如果你之前把它们当原料记在「① 原料库」里，建议在这里重建一遍 —— 这样牛奶涨价多少、出品率掉到多少，都能直接看出来。</div>';
+      return;
+    }
+    grid.innerHTML = bases.map(function(b){
+      var bb = baseBatch(b);
+      var ingOpts = state.ingredients.map(function(i){ return '<option value="'+i.id+'">'+esc(i.name)+'</option>'; }).join("");
+      var rows = (b.recipe||[]).map(function(r){
+        var ing = ingById(r.ingId != null ? r.ingId : r.refId);
+        if(!ing) return "";
+        var uc = unitCostIn(ing, r.u||ing.unit);
+        return '<tr data-rid="'+r.id+'" data-ing="'+ing.id+'">'
+          + '<td class="r-name">'+esc(ing.name)+'</td>'
+          + '<td class="num r-amt"><span class="amt-box"><input type="number" class="b-amount" step="any" min="0" value="'+r.amount+'">'+unitCell(ing,r)+'</span></td>'
+          + '<td class="num muted r-uc">'+num(uc, uc<1?4:2)+'</td>'
+          + '<td class="num" data-bcost="'+r.id+'">'+money(amtInIngUnit(r)*unitCost(ing))+'</td>'
+          + '<td class="right r-del" style="width:44px"><button class="mini ghost b-del-r">×</button></td>'
+          + '</tr>';
+      }).join("");
+      var yl = bb.yieldRate;
+      var ylTxt = bb.inG>0 ? pct(yl) : "—";
+      var ylCls = (bb.inG>0 && yl<0.8) ? " b-warn" : "";
+      var unitTxt = bb.out>0 ? "¥"+num(bb.unit, bb.unit<1?4:2)+"/"+esc(b.unit||"g") : "待填产出量";
+      return '<div class="prod bcard open" data-id="'+b.id+'">'
+        + '<div class="p-head">'
+        +   '<input type="text" class="p-name b-name" value="'+esc(b.name)+'" aria-label="基底名称">'
+        +   '<span class="p-meta">'
+        +     '<span>单位成本<b data-bunit-h="'+b.id+'"> '+esc(unitTxt)+'</b></span>'
+        +     '<span class="profit">出品率<b class="'+ylCls.trim()+'" data-byl="'+b.id+'"> '+esc(ylTxt)+'</b></span>'
+        +   '</span>'
+        +   '<button type="button" class="del-p del-b" aria-label="删除基底" title="删除基底">&times;</button>'
+        + '</div>'
+        + '<div class="p-body">'
+        +   '<div class="b-form">'
+        +     '<label>每批产出量（' + esc(b.unit||"g") + '）<input type="number" class="b-out" step="any" min="0" value="'+(+b.out||0)+'" placeholder="如 4600"></label>'
+        +     '<label>其它耗材 ¥/ 批（菌种、滤网等）<input type="number" class="b-sup" step="0.01" min="0" value="'+(+b.supplies||0)+'" placeholder="0"></label>'
+        +     '<label>备注<input type="text" class="b-note" value="'+esc(b.note||"")+'" placeholder="发酵时长、温度等"></label>'
+        +   '</div>'
+        +   '<div class="scroll-x narrow"><table><thead><tr><th>投料</th><th class="num">用量 / 单位</th><th class="num r-uc">单价</th><th class="num">成本</th><th></th></tr></thead>'
+        +   '<tbody>'+rows+'</tbody>'
+        +   '<tfoot><tr><td colspan="3">投料成本（每批）</td><td class="num" data-bmat="'+b.id+'">'+money(bb.mat)+'</td><td></td></tr></tfoot></table></div>'
+        +   '<div class="add-row">'
+        +     '<select class="b-add-sel" style="width:auto;display:inline-block;vertical-align:middle">'+ingOpts+'</select> '
+        +     '<input type="number" class="b-add-amt" step="any" min="0" placeholder="用量" style="width:90px;display:inline-block;vertical-align:middle"> '
+        +     '<button class="mini b-add-btn">+ 加入投料</button>'
+        +   '</div>'
+        +   '<div class="summary">'
+        +     '<div class="sum-item"><div class="s-l">投料总量</div><div class="s-v" data-bin="'+b.id+'">'+(bb.inG>0?num(bb.inG,0)+" g":"—")+'</div></div>'
+        +     '<div class="sum-item"><div class="s-l">每批总成本</div><div class="s-v" data-btot="'+b.id+'">'+money(bb.total)+'</div></div>'
+        +     '<div class="sum-item"><div class="s-l">出品率</div><div class="s-v" data-byl2="'+b.id+'">'+esc(ylTxt)+'</div></div>'
+        +     '<div class="sum-item is-key"><div class="s-l">单位成本</div><div class="s-v" data-bunit="'+b.id+'">'+esc(unitTxt)+'</div></div>'
+        +   '</div>'
+        + '</div></div>';
+    }).join("");
+    Array.prototype.forEach.call(grid.querySelectorAll(".bcard"), function(card){
+      var sel = card.querySelector(".b-add-sel"), amt = card.querySelector(".b-add-amt");
+      if(!sel || !amt) return;
+      var gi = ingById(sel.value);
+      amt.placeholder = "用量(" + ((gi && gi.unit) || "g") + ")";
+    });
+  }
+
+  // 基底卡片内的派生数值（改投料/产出量后不整页重绘，直接改数字）
+  function refreshBaseDerived(id){
+    var b = baseById(id); if(!b) return;
+    var bb = baseBatch(b);
+    var q = function(k){ return document.querySelector('[data-'+k+'="'+id+'"]'); };
+    var ylTxt = bb.inG>0 ? pct(bb.yieldRate) : "—";
+    var unitTxt = bb.out>0 ? "¥"+num(bb.unit, bb.unit<1?4:2)+"/"+(b.unit||"g") : "待填产出量";
+    var set = function(el, v){ if(el) el.textContent = v; };
+    set(q("bmat"), money(bb.mat));
+    set(q("btot"), money(bb.total));
+    set(q("bin"), bb.inG>0 ? num(bb.inG,0)+" g" : "—");
+    set(q("byl2"), ylTxt);
+    set(q("bunit"), unitTxt);
+    set(q("bunit-h"), " " + unitTxt);   // 卡头那行也要跟着变
+    (b.recipe||[]).forEach(function(r){
+      var c = document.querySelector('[data-bcost="'+r.id+'"]');
+      var ing = ingById(r.ingId != null ? r.ingId : r.refId);
+      if(c && ing) c.textContent = money(amtInIngUnit(r)*unitCost(ing));
+    });
+  }
+
   /* ---------- 渲染：产品配方 ---------- */
   function renderProducts(){
     var grid = document.getElementById("prodGrid");
@@ -1903,28 +2151,50 @@
       var rc = recipeCost(p);
       var rows = rc.rows.slice().sort(function(a,b){ return b.cost-a.cost; });
       var maxc = rows.length? rows[0].cost : 1;
+      var rowColor = function(r){
+        if(r.isBase) return BASE_COLOR;
+        return COLORS[state.ingredients.indexOf(r.ing) % COLORS.length];
+      };
       var bars = rows.map(function(r,i){
-        var color = COLORS[state.ingredients.indexOf(r.ing) % COLORS.length];
         var w = maxc>0 ? Math.max(2, r.cost/maxc*100) : 0;
-        return '<span style="width:'+w+'%;background:'+color+'" title="'+esc(r.ing.name)+'"></span>';
+        return '<span style="width:'+w+'%;background:'+rowColor(r)+'" title="'+esc(r.name)+'"></span>';
       }).join("");
       var legend = rows.map(function(r){
-        var color = COLORS[state.ingredients.indexOf(r.ing) % COLORS.length];
-        return '<span><i style="background:'+color+'"></i>'+esc(r.ing.name)+' '+money(r.cost)+'</span>';
+        return '<span><i style="background:'+rowColor(r)+'"></i>'+esc(r.name)
+          + (r.isBase ? '<span class="tag-base">基底</span>' : '') + ' ' + money(r.cost)+'</span>';
       }).join("");
 
       var recipeRows = p.recipe.map(function(r){
-        var ing = ingById(r.ingId); if(!ing) return "";
-        return '<tr data-rid="'+r.id+'" data-ing="'+r.ingId+'">'
-          + '<td class="r-name">'+esc(ing.name)+'</td>'
-          + '<td class="num r-amt"><span class="amt-box"><input type="number" class="r-amount" step="any" min="0" value="'+r.amount+'">'+unitCell(ing,r)+'</span></td>'
-          + '<td class="num muted r-uc" data-uc="'+r.ingId+'">'+num(unitCostIn(ing,r.u||ing.unit), unitCostIn(ing,r.u||ing.unit)<1?4:2)+'</td>'
-          + '<td class="num r-cost" data-cost="'+r.id+'">'+money(amtInIngUnit(r)*unitCost(ing))+'</td>'
+        var isB = rowIsBase(r);
+        var badge = isB ? '<span class="tag-base">基底</span>' : '';
+        var nm = esc(rowName(r));
+        var amtCell;
+        if(isB){
+          var b0 = baseById(rowRefId(r));
+          amtCell = '<span class="amt-box"><input type="number" class="r-amount" step="any" min="0" value="'+r.amount+'">'
+            + '<span data-utext="'+r.id+'">'+((b0 && b0.unit) || "g")+'</span></span>';
+        }else{
+          var ing0 = ingById(rowRefId(r)); if(!ing0) return "";
+          amtCell = '<span class="amt-box"><input type="number" class="r-amount" step="any" min="0" value="'+r.amount+'">'+unitCell(ing0,r)+'</span>';
+        }
+        var uc = rowUnitCostIn(r);
+        return '<tr data-rid="'+r.id+'" data-ref="'+rowRefId(r)+'" data-kind="'+(isB?"base":"ing")+'">'
+          + '<td class="r-name">'+nm+badge+'</td>'
+          + '<td class="num r-amt">'+amtCell+'</td>'
+          + '<td class="num muted r-uc" data-uc="'+r.id+'">'+num(uc, uc<1?4:2)+'</td>'
+          + '<td class="num r-cost" data-cost="'+r.id+'">'+money(rowCost(r))+'</td>'
           + '<td class="right r-del" style="width:44px"><button class="mini ghost del-r">×</button></td>'
           + '</tr>';
       }).join("");
 
-      var opts = state.ingredients.map(function(i){ return '<option value="'+i.id+'">'+esc(i.name)+'</option>'; }).join("");
+      var opts = '<optgroup label="原料">'
+        + state.ingredients.map(function(i){ return '<option value="ing:'+i.id+'">'+esc(i.name)+'</option>'; }).join("")
+        + '</optgroup>'
+        + ((state.bases||[]).length
+            ? '<optgroup label="自制基底">' + state.bases.map(function(b){
+                return '<option value="base:'+b.id+'">'+esc(b.name)+'</option>';
+              }).join("") + '</optgroup>'
+            : '');
 
       var isOpenNow = isOpen(p.id);
       return '<div class="prod'+(isOpenNow?' open':'')+'" data-id="'+p.id+'">'
@@ -1956,12 +2226,11 @@
         +   '</div>'
         + '</div></div>';
     }).join("");
-    // 「加入配方」输入框的占位符跟随所选原料单位
+    // 「加入配方」输入框的占位符跟随所选项单位（原料或基底）
     Array.prototype.forEach.call(grid.querySelectorAll(".prod"), function(card){
       var sel = card.querySelector(".add-sel"), amt = card.querySelector(".add-amt");
       if(!sel || !amt) return;
-      var gi = ingById(sel.value);
-      amt.placeholder = "用量(" + ((gi && gi.unit) || "g") + ")";
+      amt.placeholder = "用量(" + refPlaceholder(sel.value) + ")";
     });
   }
 
@@ -2250,13 +2519,40 @@
               (margin(p)*100).toFixed(1)+"%", (priceOf(p) - up).toFixed(2)];
     })));
     lines.push("");
+    lines.push("【基底库（自制半成品）】");
+    if((state.bases||[]).length){
+      lines.push(csvRows([["基底名称","投料总量(g)","每批产出(g)","出品率%","投料成本(元)","其它耗材(元)","每批总成本(元)","单位成本(元/g)","备注"]]));
+      state.bases.forEach(function(b){
+        var bb = baseBatch(b);
+        lines.push(csvRows([[b.name, bb.inG.toFixed(1), bb.out.toFixed(1), (bb.yieldRate*100).toFixed(1),
+          bb.mat.toFixed(2), bb.supplies.toFixed(2), bb.total.toFixed(2), num(bb.unit, bb.unit<1?4:2), b.note||""]]));
+      });
+      lines.push("");
+      lines.push(csvRows([["基底投料明细","原料","用量","单位","该项成本(元)"]]));
+      state.bases.forEach(function(b){
+        (b.recipe||[]).forEach(function(r){
+          var ing = ingById(r.ingId != null ? r.ingId : r.refId);
+          if(!ing) return;
+          lines.push(csvRows([[b.name, ing.name, r.amount||0, r.u || ing.unit,
+            (amtInIngUnit(r) * unitCost(ing)).toFixed(4)]]));
+        });
+      });
+    }else{
+      lines.push(csvRows([["（还没有录入基底）"]]));
+    }
+    lines.push("");
     lines.push("【配方明细】");
-    lines.push(csvRows([["产品","原料","用量","单位","该项成本(元)"]]));
+    lines.push(csvRows([["产品","项目","类型","用量","单位","该项成本(元)"]]));
     state.products.forEach(function(p){
       (p.recipe||[]).forEach(function(r){
-        var ing = ingById(r.ingId);
+        if(rowIsBase(r)){
+          var b = baseById(rowRefId(r)); if(!b) return;
+          lines.push(csvRows([[p.name, b.name, "基底", r.amount||0, b.unit||"g", rowCost(r).toFixed(4)]]));
+          return;
+        }
+        var ing = ingById(rowRefId(r));
         if(!ing) return;
-        lines.push(csvRows([[p.name, ing.name, r.amount||0, r.u || ing.unit,
+        lines.push(csvRows([[p.name, ing.name, "原料", r.amount||0, r.u || ing.unit,
           (amtInIngUnit(r) * unitCost(ing)).toFixed(4)]]));
       });
     });
@@ -2499,14 +2795,14 @@
     state.products.forEach(function(p){
       var rc = recipeCost(p);
       p.recipe.forEach(function(r){
-        var ing = ingById(r.ingId); if(!ing) return;
         var cell = document.querySelector('#prodGrid [data-cost="'+r.id+'"]');
-        if(cell) cell.textContent = money(amtInIngUnit(r)*unitCost(ing));
-        var uv = unitCostIn(ing, r.u||ing.unit);
-        var ucCell = document.querySelector('#prodGrid tr[data-rid="'+r.id+'"] [data-uc="'+r.ingId+'"]');
+        if(cell) cell.textContent = money(rowCost(r));
+        var uv = rowUnitCostIn(r);
+        var ucCell = document.querySelector('#prodGrid tr[data-rid="'+r.id+'"] [data-uc="'+r.id+'"]');
         if(ucCell) ucCell.textContent = num(uv, uv<1?4:2);
-        var uTxt = document.querySelector('#prodGrid tr[data-rid="'+r.id+'"] [data-utext="'+ing.id+'"]');
-        if(uTxt && uTxt.textContent !== (ing.unit||"g")) uTxt.textContent = (ing.unit||"g");
+        var uTxt = document.querySelector('#prodGrid tr[data-rid="'+r.id+'"] [data-utext="'+r.id+'"]');
+        var un = rowUnit(r);
+        if(uTxt && uTxt.textContent !== un) uTxt.textContent = un;
       });
       var t1=document.querySelector('#prodGrid [data-total="'+p.id+'"]');
       var t2=document.querySelector('#prodGrid [data-total2="'+p.id+'"]');
@@ -2553,6 +2849,7 @@
 
   function renderAll(){
     renderIngredients();
+    renderBases();
     renderProducts();
     renderPrice();
     renderKpis();
@@ -2567,7 +2864,7 @@
   }
 
   /* ---------- 模块切换 ---------- */
-  var TABS = ["overview","ing","recipe","price","biz","sim","log","data"];
+  var TABS = ["overview","ing","base","recipe","price","biz","sim","log","data"];
   var curTab = "overview";
   function showTab(name){
     if(TABS.indexOf(name)<0) name = "overview";
@@ -2668,8 +2965,9 @@
       if(e.target.className.indexOf("del")<0) return;
       var tr=e.target.closest("tr[data-id]"); if(!tr) return;
       var id=tr.getAttribute("data-id");
-      var used = state.products.some(function(p){ return p.recipe.some(function(r){ return r.ingId===id; }); });
-      if(used && !confirm("有产品配方正在使用该原料，确定删除？")) return;
+      var used = state.products.some(function(p){ return p.recipe.some(function(r){ return !rowIsBase(r) && rowRefId(r)===id; }); })
+              || (state.bases||[]).some(function(b){ return (b.recipe||[]).some(function(r){ return r.ingId===id; }); });
+      if(used && !confirm("有产品配方或基底正在使用该原料，确定删除？")) return;
       state.ingredients = state.ingredients.filter(function(i){ return i.id!==id; });
       save(); renderAll();
     });
@@ -2738,22 +3036,130 @@
       }
       if(e.target.className.indexOf("add-btn")>=0){
         var sel = card.querySelector(".add-sel"), amt = card.querySelector(".add-amt");
-        var ingId = sel.value, amount = parseFloat(amt.value);
-        if(!ingId || isNaN(amount) || amount<=0){ alert("请选择原料并填写用量"); return; }
-        var ingAdd = ingById(ingId);
-        p.recipe.push({id:uid("r"), ingId:ingId, amount:amount, u:(ingAdd? (ingAdd.unit||"g") : "g")});
+        var val = sel.value, amount = parseFloat(amt.value);
+        if(!val || isNaN(amount) || amount<=0){ alert("请选择原料或基底，并填写用量"); return; }
+        if(val.indexOf("base:") === 0){
+          p.recipe.push({id:uid("r"), kind:"base", refId:val.slice(5), amount:amount, u:"g"});
+        }else{
+          var ingId = val.indexOf("ing:") === 0 ? val.slice(4) : val;
+          var ingAdd = ingById(ingId);
+          p.recipe.push({id:uid("r"), kind:"ing", refId:ingId, ingId:ingId, amount:amount, u:(ingAdd? (ingAdd.unit||"g") : "g")});
+        }
         amt.value="";
         save(); renderAll();
       }
     });
     document.getElementById("btnAddProd").addEventListener("click", function(){
       var first = state.ingredients[0];
-      var p = {id:uid("p"), name:"新品酸奶碗", price:35, daily:10, recipe: first? [{id:uid("r"), ingId:first.id, amount:180}] : []};
+      var p = {id:uid("p"), name:"新品酸奶碗", price:35, daily:10,
+               recipe: first? [{id:uid("r"), kind:"ing", refId:first.id, ingId:first.id, amount:180}] : []};
       state.products.push(p);
       ui.open[p.id] = 1; saveUi();   // 新建的产品默认展开，方便马上编辑
       save(); renderAll();
       var el = document.querySelector('#prodGrid .prod[data-id="'+p.id+'"]');
       if(el && el.scrollIntoView) el.scrollIntoView({block:"center", behavior:"smooth"});
+    });
+
+    /* ---------- 基底页交互 ---------- */
+    document.getElementById("btnAddBase").addEventListener("click", function(){
+      if(!state.ingredients.length){ alert("先在「① 原料库」里添加原料（牛奶、菌种等），再来录基底。"); return; }
+      var b = {id:uid("b"), name:"新基底", unit:"g", out:0, supplies:0, note:"", recipe:[]};
+      state.bases.push(b);
+      save(); renderAll();
+      var el = document.querySelector('#baseGrid .bcard[data-id="'+b.id+'"]');
+      if(el && el.scrollIntoView) el.scrollIntoView({block:"center", behavior:"smooth"});
+    });
+
+    document.getElementById("baseGrid").addEventListener("click", function(e){
+      var card = e.target.closest(".bcard"); if(!card) return;
+      var b = baseById(card.getAttribute("data-id")); if(!b) return;
+      if(e.target.className.indexOf("del-b")>=0){
+        var usedBy = state.products.filter(function(p){
+          return p.recipe.some(function(r){ return rowIsBase(r) && rowRefId(r)===b.id; });
+        }).map(function(p){ return p.name; });
+        var msg = usedBy.length
+          ? "有产品配方正在用「"+b.name+"」（"+usedBy.join("、")+"），删除后这些行的成本会变成 0。确定删除？"
+          : "删除基底「"+b.name+"」？";
+        if(!confirm(msg)) return;
+        state.bases = state.bases.filter(function(x){ return x.id!==b.id; });
+        save(); renderAll(); return;
+      }
+      if(e.target.className.indexOf("b-del-r")>=0){
+        var tr = e.target.closest("tr[data-rid]"); if(!tr) return;
+        var rid = tr.getAttribute("data-rid");
+        b.recipe = (b.recipe||[]).filter(function(r){ return r.id!==rid; });
+        save(); renderAll(); return;
+      }
+      if(e.target.className.indexOf("b-add-btn")>=0){
+        var sel = card.querySelector(".b-add-sel"), amt = card.querySelector(".b-add-amt");
+        var ingId = sel.value, amount = parseFloat(amt.value);
+        if(!ingId || isNaN(amount) || amount<=0){ alert("请选择原料并填写用量"); return; }
+        var ing = ingById(ingId);
+        b.recipe.push({id:uid("r"), ingId:ingId, refId:ingId, amount:amount, u:(ing? (ing.unit||"g") : "g")});
+        amt.value = "";
+        save(); renderAll(); return;
+      }
+    });
+
+    // 名称 / 产出量 / 其它耗材 / 备注：只刷新数字，不整页重绘（避免输入被光标跳走）
+    document.getElementById("baseGrid").addEventListener("input", function(e){
+      var card = e.target.closest(".bcard"); if(!card) return;
+      var b = baseById(card.getAttribute("data-id")); if(!b) return;
+      var cls = e.target.className || "";
+      if(cls.indexOf("b-name")>=0){ b.name = e.target.value; }
+      else if(cls.indexOf("b-out")>=0){ b.out = parseFloat(e.target.value) || 0; }
+      else if(cls.indexOf("b-sup")>=0){ b.supplies = parseFloat(e.target.value) || 0; }
+      else if(cls.indexOf("b-note")>=0){ b.note = e.target.value; }
+      else if(cls.indexOf("b-amount")>=0){
+        var tr = e.target.closest("tr[data-rid]"); if(!tr) return;
+        var rid = tr.getAttribute("data-rid");
+        (b.recipe||[]).forEach(function(r){ if(r.id===rid) r.amount = parseFloat(e.target.value) || 0; });
+      }
+      else return;
+      save();
+      refreshBaseDerived(b.id);
+      refresh();   // 产品用了这个基底，单碗成本要跟着变
+    });
+
+    document.getElementById("baseGrid").addEventListener("change", function(e){
+      var card = e.target.closest(".bcard"); if(!card) return;
+      var b = baseById(card.getAttribute("data-id")); if(!b) return;
+      if((e.target.className||"").indexOf("r-u")>=0){
+        var tr = e.target.closest("tr[data-rid]"); if(!tr) return;
+        var rid = tr.getAttribute("data-rid");
+        (b.recipe||[]).forEach(function(r){ if(r.id===rid) r.u = e.target.value; });
+        save(); renderAll(); return;
+      }
+      if((e.target.className||"").indexOf("b-add-sel")>=0){
+        var sel = card.querySelector(".b-add-sel"), amt = card.querySelector(".b-add-amt");
+        if(sel && amt){ var gi = ingById(sel.value); amt.placeholder = "用量(" + ((gi && gi.unit) || "g") + ")"; }
+      }
+    });
+
+    /* 基底页：保存并同步 */
+    var btnSaveBase = document.getElementById("btnSaveBase");
+    btnSaveBase.addEventListener("click", function(){
+      var btn = this;
+      if(btn.disabled) return;
+      try{ save({nosync:true}); }catch(e){}
+      var stEl = document.getElementById("baseState");
+      var mark = function(t){ if(stEl) stEl.innerHTML = '<span class="dot"></span>' + esc(t); };
+      if(!syncReady()){
+        if(stEl) stEl.className = "save-state ok";
+        mark("已保存到本机 · " + hhmm() + "（未开启云端同步，需到「数据」页启用）");
+        return;
+      }
+      btn.disabled = true;
+      var oldTxt = btn.textContent;
+      btn.textContent = "同步中…";
+      if(stEl){ stEl.className = "save-state busy"; }
+      mark("正在保存到本机并上传云端…");
+      var done = function(){ btn.disabled = false; btn.textContent = oldTxt; };
+      pushLocal(true).then(function(okk){
+        done();
+        if(stEl) stEl.className = "save-state " + (okk ? "ok" : "err");
+        mark(okk ? "已保存并同步 · " + hhmm() : "已存本机，上传失败（联网后会自动重试）");
+      }).catch(function(){ done(); if(stEl) stEl.className = "save-state err"; mark("同步出错，数据已存本机"); });
     });
 
     /* 配方页：保存并同步 */
