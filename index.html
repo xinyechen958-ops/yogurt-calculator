@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=19">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=19">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=19">
+<link rel="manifest" href="manifest.json?v=20">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=20">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -134,10 +134,11 @@
   .pg-head .pg-title{font-size:14px;font-weight:700;color:var(--text);letter-spacing:.2px;}
   .pg-head .pg-n{font-size:11.5px;color:var(--text-3);background:#f2f5f8;border-radius:6px;padding:2px 7px;}
   .pg-head .pg-add{margin-left:auto;font-size:12px;padding:4px 10px;}
-  .p-catrow{display:flex;align-items:center;gap:7px;padding:0 0 9px;font-size:12px;color:var(--text-3);}
+  .p-catrow{display:flex;align-items:center;gap:7px;padding:0 0 9px;font-size:12px;color:var(--text-3);flex-wrap:nowrap;}
   .p-catrow select{padding:4px 7px;border:1px solid #e0e6ed;border-radius:8px;font-size:12.5px;
-    background:#fcfdfe;color:var(--text);}
+    background:#fcfdfe;color:var(--text);flex:0 0 auto;min-width:116px;max-width:150px;}
   .p-catrow select:focus{background:#fff;}
+  .p-catrow .muted{flex:1 1 auto;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   /* 原料库：按分类分组的小标题行 */
   #ingTable tr.cat-head td{background:#f6f9fa;color:var(--text-2);font-size:12.5px;font-weight:700;
     padding:7px 10px;letter-spacing:.2px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
@@ -854,8 +855,8 @@
   <!-- 自制库 -->
   <section class="card" data-view="base">
     <h2>② 自制库 <span class="pill">一锅一锅做的半成品</span></h2>
-    <p class="desc">自制酸奶底、希腊酸奶、果酱、糖浆、格兰诺拉这类「先做一批、再按克用」的东西，单独在这里录。填投料 + 每批产出量，自动算出品率和每克成本；在配方里就能像原料一样直接取用。投料也是打字搜索，不用在长列表里翻。</p>
-    <div class="prod-grid" id="baseGrid"></div>
+    <p class="desc">按四类分开管：<b>自制酸奶底</b>（原味/希腊/椰子…）、<b>自制果酱</b>、<b>自制麦片</b>、<b>自制冻冻</b>。填投料 + 每批产出量，自动算出品率和每克成本；在配方里就能像原料一样直接取用。投料也是打字搜索，不用在长列表里翻。</p>
+    <div class="pg-wrap" id="baseGrid"></div>
     <div class="toolbar" style="margin-top:14px;margin-bottom:0">
       <button id="btnAddBase">+ 新增自制</button>
       <button id="btnSaveBase" class="primary">保存并同步</button>
@@ -1116,7 +1117,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v19 · 1836";
+  var BUILD = "v20 · 1850";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -1143,6 +1144,26 @@
     if(/三明治|吐司|贝果|可颂|卷|堡|sandwich/i.test(n)) return "sandwich";
     return "bowl";
   }
+
+  /* 自制分类：自制页按这个分组（v20 起） */
+  var BASE_CATS = [
+    {k:"yogurt",  n:"自制酸奶底"},
+    {k:"jam",     n:"自制果酱"},
+    {k:"granola", n:"自制麦片"},
+    {k:"jelly",   n:"自制冻冻"}
+  ];
+  function baseCatName(k){ for(var i=0;i<BASE_CATS.length;i++){ if(BASE_CATS[i].k===k) return BASE_CATS[i].n; } return BASE_CATS[0].n; }
+  function baseCatValid(k){ return BASE_CATS.some(function(c){ return c.k === k; }); }
+  // 老数据没有 cat：按名字猜一个，猜不出就归到酸奶底
+  function guessBaseCat(b){
+    var n = String((b && b.name) || "");
+    if(/果酱|酱|果茸|jam/i.test(n)) return "jam";
+    if(/麦片|格兰诺拉|燕麦|脆片|granola/i.test(n)) return "granola";
+    if(/冻冻|奶冻|果冻|布丁|jelly|jello/i.test(n)) return "jelly";
+    return "yogurt";
+  }
+  // 卡片上永远显示一个合法分类（脏数据兜底）
+  function baseCatOf(b){ var k = b && b.cat; return baseCatValid(k) ? k : guessBaseCat(b); }
 
   var state = null;
   var ingOpen = {};   // 窄屏下哪些原料行处于展开态（仅界面状态，不写盘）
@@ -1579,6 +1600,8 @@
       if(b.note == null) b.note = "";
       b.recipe = Array.isArray(b.recipe) ? b.recipe : [];
       b.recipe.forEach(function(r){ if(!r.id) r.id = uid("r"); });
+      // 自制分类：v20 新增，老数据按名字猜一个（酸奶底 / 果酱 / 麦片 / 冻冻）
+      if(!baseCatValid(b.cat)) b.cat = guessBaseCat(b);
     });
     // 配方行：旧格式 {ingId} → 新格式 {kind:"ing"|"base", refId}；老数据一律是原料
     s.products.forEach(function(p){
@@ -2277,18 +2300,37 @@
     return '<span data-utext="'+ing.id+'">'+(ing.unit||"g")+'</span>';
   }
 
-  /* ---------- 渲染：自制库 ---------- */
+  /* ---------- 渲染：自制库（按分类分组） ---------- */
   function renderBases(){
     var grid = document.getElementById("baseGrid");
     if(!grid) return;
     var bases = state.bases || [];
-    if(!bases.length){
-      grid.innerHTML = '<div class="b-empty">还没有自制半成品。点下方「新增自制」，把酸奶底、希腊酸奶、果酱、糖浆、格兰诺拉这类'
+    // 分类顺序固定：酸奶底 → 果酱 → 麦片 → 冻冻；空分类也留着，好让用户直接往里加
+    grid.innerHTML = (bases.length ? "" : '<div class="b-empty">还没有自制半成品。分类下面任意一组的「+ 新增」，把酸奶底、果酱、麦片、冻冻这类'
         + '<b>先做一批再按克用</b>的东西录进来。<br>'
-        + '如果你之前把它们当原料记在「① 原料库」里，建议在这里重建一遍 —— 这样牛奶涨价多少、出品率掉到多少，都能直接看出来。</div>';
-      return;
-    }
-    grid.innerHTML = bases.map(function(b){
+        + '如果你之前把它们当原料记在「① 原料库」里，建议在这里重建一遍 —— 这样牛奶涨价多少、出品率掉到多少，都能直接看出来。</div>')
+      + BASE_CATS.map(function(c){
+        var list = bases.filter(function(b){ return baseCatOf(b) === c.k; });
+        var head = '<div class="pg-head">'
+          + '<span class="pg-title">'+esc(c.n)+'</span>'
+          + '<span class="pg-n">'+list.length+' 项</span>'
+          + '<button type="button" class="mini ghost pg-add b-add-cat" data-cat="'+c.k+'">+ 新增</button>'
+          + '</div>';
+        var body = list.length
+          ? '<div class="prod-grid">'+ list.map(baseCardHtml).join("") +'</div>'
+          : (bases.length ? '<div class="b-empty">这一类还没有，点右上「+ 新增」加一项</div>' : '');
+        return '<section class="pgroup" data-cat="'+c.k+'">'+ head + body +'</section>';
+      }).join("");
+    Array.prototype.forEach.call(grid.querySelectorAll(".bcard"), function(card){
+      var sel = card.querySelector(".b-add-sel"), amt = card.querySelector(".b-add-amt");
+      if(!sel || !amt) return;
+      var gi = ingById(stripRef(sel.getAttribute("data-v")) || sel.value);
+      amt.placeholder = "用量(" + ((gi && gi.unit) || "g") + ")";
+    });
+  }
+
+  // 单张自制卡片（分组渲染时复用）
+  function baseCardHtml(b){
       var bb = baseBatch(b);
       var rows = (b.recipe||[]).map(function(r){
         var ing = ingById(r.ingId != null ? r.ingId : r.refId);
@@ -2316,6 +2358,12 @@
         +   '<button type="button" class="del-p del-b" aria-label="删除自制" title="删除自制">&times;</button>'
         + '</div>'
         + '<div class="p-body">'
+        +   '<div class="p-catrow"><span>分类</span>'
+        +     '<select class="b-cat" title="换一个分类，这张卡片会移到对应分组">'
+        +       BASE_CATS.map(function(c){ return '<option value="'+c.k+'"'+(baseCatOf(b)===c.k?" selected":"")+'>'+esc(c.n)+'</option>'; }).join("")
+        +     '</select>'
+        +     '<span class="muted">改完会移到对应分组</span>'
+        +   '</div>'
         +   '<div class="b-form">'
         +     '<label>每批产出量（' + esc(b.unit||"g") + '）<input type="number" class="b-out" step="any" min="0" value="'+(+b.out||0)+'" placeholder="如 4600"></label>'
         +     '<label>其它耗材 ¥/ 批（菌种、滤网等）<input type="number" class="b-sup" step="0.01" min="0" value="'+(+b.supplies||0)+'" placeholder="0"></label>'
@@ -2337,13 +2385,6 @@
         +     '<div class="sum-item is-key"><div class="s-l">单位成本</div><div class="s-v" data-bunit="'+b.id+'">'+esc(unitTxt)+'</div></div>'
         +   '</div>'
         + '</div></div>';
-    }).join("");
-    Array.prototype.forEach.call(grid.querySelectorAll(".bcard"), function(card){
-      var sel = card.querySelector(".b-add-sel"), amt = card.querySelector(".b-add-amt");
-      if(!sel || !amt) return;
-      var gi = ingById(stripRef(sel.getAttribute("data-v")) || sel.value);
-      amt.placeholder = "用量(" + ((gi && gi.unit) || "g") + ")";
-    });
   }
 
   // 自制卡片内的派生数值（改投料/产出量后不整页重绘，直接改数字）
@@ -2760,10 +2801,10 @@
     lines.push("");
     lines.push("【自制半成品库】");
     if((state.bases||[]).length){
-      lines.push(csvRows([["自制名称","投料总量(g)","每批产出(g)","出品率%","投料成本(元)","其它耗材(元)","每批总成本(元)","单位成本(元/g)","备注"]]));
+      lines.push(csvRows([["自制分类","自制名称","投料总量(g)","每批产出(g)","出品率%","投料成本(元)","其它耗材(元)","每批总成本(元)","单位成本(元/g)","备注"]]));
       state.bases.forEach(function(b){
         var bb = baseBatch(b);
-        lines.push(csvRows([[b.name, bb.inG.toFixed(1), bb.out.toFixed(1), (bb.yieldRate*100).toFixed(1),
+        lines.push(csvRows([[baseCatName(baseCatOf(b)), b.name, bb.inG.toFixed(1), bb.out.toFixed(1), (bb.yieldRate*100).toFixed(1),
           bb.mat.toFixed(2), bb.supplies.toFixed(2), bb.total.toFixed(2), num(bb.unit, bb.unit<1?4:2), b.note||""]]));
       });
       lines.push("");
@@ -3123,8 +3164,8 @@
         var bb = baseBatch(b);
         out.push({
           v:"base:"+b.id, n:b.name, u:b.unit||"g",
-          s:"自制半成品 · " + (bb.out>0 ? "¥"+num(bb.unit, bb.unit<1?4:2)+"/"+esc(b.unit||"g") : "待填产出量"),
-          kw:(b.name + " 自制 基底 " + (b.note||"")).toLowerCase()
+          s:baseCatName(baseCatOf(b)) + " · " + (bb.out>0 ? "¥"+num(bb.unit, bb.unit<1?4:2)+"/"+esc(b.unit||"g") : "待填产出量"),
+          kw:(b.name + " 自制 基底 半成品 " + baseCatName(baseCatOf(b)) + " " + (b.note||"")).toLowerCase()
         });
       });
     }
@@ -3538,13 +3579,24 @@
     document.getElementById("btnAddProd").addEventListener("click", function(){ addProduct("bowl"); });
 
     /* ---------- 自制页交互 ---------- */
-    document.getElementById("btnAddBase").addEventListener("click", function(){
+    var BASE_NEW_NAME = {yogurt:"新酸奶底", jam:"新果酱", granola:"新麦片", jelly:"新冻冻"};
+    function addBase(cat){
       if(!state.ingredients.length){ alert("先在「① 原料库」里添加原料（牛奶、菌种等），再来录自制半成品。"); return; }
-      var b = {id:uid("b"), name:"新自制", unit:"g", out:0, supplies:0, note:"", recipe:[]};
+      if(!baseCatValid(cat)) cat = "yogurt";
+      var b = {id:uid("b"), name:(BASE_NEW_NAME[cat] || "新自制"), cat:cat, unit:"g", out:0, supplies:0, note:"", recipe:[]};
       state.bases.push(b);
       save(); renderAll();
       var el = document.querySelector('#baseGrid .bcard[data-id="'+b.id+'"]');
       if(el && el.scrollIntoView) el.scrollIntoView({block:"center", behavior:"smooth"});
+      var nm = el && el.querySelector(".b-name");
+      if(nm){ nm.focus(); nm.select(); }
+    }
+    document.getElementById("btnAddBase").addEventListener("click", function(){ addBase("yogurt"); });
+
+    // 分组标题上的「+ 新增」：直接加到这一组
+    document.getElementById("baseGrid").addEventListener("click", function(e){
+      var addBtn = e.target.closest && e.target.closest(".b-add-cat");
+      if(addBtn){ addBase(addBtn.getAttribute("data-cat")); return; }
     });
 
     document.getElementById("baseGrid").addEventListener("click", function(e){
@@ -3614,6 +3666,14 @@
     document.getElementById("baseGrid").addEventListener("change", function(e){
       var card = e.target.closest(".bcard"); if(!card) return;
       var b = baseById(card.getAttribute("data-id")); if(!b) return;
+      if((e.target.className||"").indexOf("b-cat")>=0){
+        var ck = e.target.value;
+        if(baseCatValid(ck) && ck !== baseCatOf(b)){
+          b.cat = ck;
+          save(); renderBases(); refresh();   // 重新分组：卡片会移到对应组里
+        }
+        return;
+      }
       if((e.target.className||"").indexOf("r-u")>=0){
         var tr = e.target.closest("tr[data-rid]"); if(!tr) return;
         var rid = tr.getAttribute("data-rid");
