@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=25">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=25">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=25">
+<link rel="manifest" href="manifest.json?v=26">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=26">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=26">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -1141,7 +1141,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v25 · 2017";
+  var BUILD = "v26 · 2026";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -3366,20 +3366,34 @@
     var input = combo.input; if(!input) return;
     var el = comboListEl();
     var r = input.getBoundingClientRect();
-    var vw = window.innerWidth || 360, vh = window.innerHeight || 640;
+    // 手机弹出键盘后 innerHeight 不变，用 visualViewport 才是真正的可视高度（v26）
+    var vv = window.visualViewport;
+    var vw = Math.round((vv && vv.width) || window.innerWidth || 360);
+    var vh = Math.round(vv && vv.height ? vv.height + (vv.offsetTop || 0) : (window.innerHeight || 640));
     // 手机上「用量 + 加入配方」会折到第二行：浮层要挂在这一行下面，别把按钮盖住
     var row = input.closest(".add-row");
     var rr = row ? row.getBoundingClientRect() : null;
     var anchorBottom = (rr && rr.bottom > r.bottom + 6) ? rr.bottom : r.bottom;
-    var below = vh - anchorBottom - 10, above = r.top - 10;
-    var h = Math.min(300, Math.max(150, below >= above ? below : above));
+    var GAP = 6, EDGE = 10;
+    var spaceBelow = vh - anchorBottom - GAP - EDGE;
+    var spaceAbove = r.top - GAP - EDGE;
+    // 想显示多高：内容实测高度，但 320 封顶（再多也看不过来，内部滚动）
+    var want = Math.min(320, Math.max(el.scrollHeight + 10, 120));
+    // 下面连 220 都放不下、且上面更宽裕 → 翻到上方，别顶着窗口底边被裁
+    var placeAbove = spaceBelow < Math.min(want, 220) && spaceAbove > spaceBelow;
+    var space = placeAbove ? spaceAbove : spaceBelow;
+    // 关键：高度只能用「实际选中的那一侧」的空间，不能用较大一侧
+    var h = Math.round(Math.max(88, Math.min(320, space)));
     var w = Math.min(Math.max(r.width || 200, 220), vw - 16);
-    var left = Math.min(Math.max(r.left, 8), vw - w - 8);
-    var top = (below >= 150 || below >= above) ? anchorBottom + 4 : Math.max(8, r.top - h - 4);
+    var left = Math.min(Math.max(r.left, 8), Math.max(8, vw - w - 8));
+    var top = placeAbove ? (r.top - GAP - h) : (anchorBottom + GAP);
+    if(top < EDGE) top = EDGE;
+    if(top + h > vh - EDGE) top = Math.max(EDGE, vh - EDGE - h);
     el.style.left = Math.round(left) + "px";
     el.style.top = Math.round(top) + "px";
     el.style.width = Math.round(w) + "px";
-    el.style.maxHeight = Math.round(h) + "px";
+    el.style.maxHeight = h + "px";
+    el.classList.toggle("above", placeAbove);
   }
   function comboOpen(input){
     combo.input = input;
@@ -3520,6 +3534,11 @@
       }
     }, true);
     window.addEventListener("resize", function(){ if(combo.input) comboPlace(); });
+    // 手机键盘弹起 / 收起（visualViewport 变化）后重新量一次，别让浮层落在键盘后面
+    if(window.visualViewport){
+      window.visualViewport.addEventListener("resize", function(){ if(combo.input) comboPlace(); });
+      window.visualViewport.addEventListener("scroll", function(){ if(combo.input) comboPlace(); });
+    }
 
     // 原料库
     var priceEditFrom = null;
