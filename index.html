@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=18">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=18">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=18">
+<link rel="manifest" href="manifest.json?v=19">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=19">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=19">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -215,6 +215,41 @@
   .fab-add.show{display:flex;}
   .fab-add:hover,.fab-add:active{background:#0b8378;border-color:#0b8378;color:#fff;}
   body.fab-on .wrap{padding-bottom:calc(96px + env(safe-area-inset-bottom));}
+  /* 撤销条：删错了还能拉回来 */
+  .undo-bar{
+    position:fixed;z-index:70;left:50%;transform:translateX(-50%);
+    bottom:calc(18px + env(safe-area-inset-bottom));
+    display:flex;align-items:center;gap:10px;max-width:calc(100vw - 28px);
+    padding:9px 10px 9px 14px;border-radius:12px;
+    background:#23303a;color:#fff;font-size:13px;line-height:1.4;
+    box-shadow:0 10px 28px rgba(16,24,40,.28);
+  }
+  .undo-bar[hidden]{display:none;}
+  .undo-txt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .undo-btn{
+    flex:none;padding:5px 11px;border-radius:8px;cursor:pointer;
+    background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.4);
+    color:#8ef0e2;font-size:12.5px;font-weight:600;white-space:nowrap;
+  }
+  .undo-btn:hover,.undo-btn:active{background:rgba(255,255,255,.24);color:#fff;}
+  .undo-x{
+    flex:none;width:26px;height:26px;padding:0;border:none;background:transparent;
+    color:rgba(255,255,255,.55);font-size:17px;line-height:1;border-radius:7px;cursor:pointer;
+  }
+  .undo-x:hover{background:rgba(255,255,255,.12);color:#fff;}
+  body.fab-on .undo-bar{bottom:calc(82px + env(safe-area-inset-bottom));}
+  /* 删除按钮的「再点一次才真删」状态 */
+  .prod .del-p.arm{
+    width:auto;min-width:24px;padding:0 8px;font-size:11.5px;font-weight:600;white-space:nowrap;
+    background:var(--berry);color:#fff;border:1px solid var(--berry);
+  }
+  .prod .del-p.arm:hover{background:#c4163c;border-color:#c4163c;color:#fff;}
+  /* 进入待确认时先收起「成本/毛利」，把位置让给「确认删除」，免得产品名被挤成省略号 */
+  .prod .p-head.arming .p-meta{display:none;}
+  button.mini.del.arm{
+    background:var(--berry);border-color:var(--berry);color:#fff;
+  }
+  button.mini.del.arm:hover{background:#c4163c;border-color:#c4163c;color:#fff;}
   /* 原料选择器：原料多了下拉翻不动，改成可以打字的搜索框 */
   input.add-sel,input.b-add-sel{width:200px;display:inline-block;vertical-align:middle;}
   .combo-list{
@@ -1070,12 +1105,18 @@
 
 <button type="button" id="fabAddIng" class="fab-add" aria-label="新增原料" title="新增原料">＋</button>
 
+<div id="undoBar" class="undo-bar" role="status" aria-live="polite" hidden>
+  <span class="undo-txt"></span>
+  <button type="button" class="undo-btn">撤销</button>
+  <button type="button" class="undo-x" aria-label="关闭提示">&times;</button>
+</div>
+
 <script>
 (function(){
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v18 · 1818";
+  var BUILD = "v19 · 1836";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -1107,6 +1148,79 @@
   var ingOpen = {};   // 窄屏下哪些原料行处于展开态（仅界面状态，不写盘）
 
   function uid(p){ return (p||"id") + "_" + Math.random().toString(36).slice(2,9); }
+
+  /* ---------- 防误删：二次确认（原地变红再点一次）+ 撤销条 ---------- */
+  var ARMED = null;          // {key, el, html, timer}
+  var UNDOS = [];            // 撤销栈：{text, undo}
+  var undoTimer = null;
+  var UNDO_MS = 9000, ARM_MS = 4000;
+
+  function undoBarEl(){ return document.getElementById("undoBar"); }
+
+  // 撤回刚才的删除（可连点多次，从最近一次往前退）
+  function pushUndo(text, undoFn){
+    UNDOS.push({text:text, undo:undoFn});
+    showUndo();
+  }
+
+  function showUndo(){
+    var bar = undoBarEl(); if(!bar) return;
+    if(!UNDOS.length){ bar.hidden = true; return; }
+    var last = UNDOS[UNDOS.length-1];
+    bar.hidden = false;
+    bar.querySelector(".undo-txt").textContent =
+      UNDOS.length > 1 ? "已删除 " + UNDOS.length + " 项 · 最近：" + last.text : last.text;
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(hideUndo, UNDO_MS);
+  }
+
+  function hideUndo(){
+    clearTimeout(undoTimer);
+    UNDOS = [];
+    var bar = undoBarEl(); if(bar) bar.hidden = true;
+  }
+
+  function undoLast(){
+    var it = UNDOS.pop(); if(!it) return false;
+    if(it.undo) it.undo();
+    save(); renderAll();
+    if(UNDOS.length) showUndo(); else hideUndo();
+    return true;
+  }
+
+  // 取消「待确认」状态：把按钮还原成原来的字
+  function disarm(){
+    if(!ARMED) return;
+    clearTimeout(ARMED.timer);
+    var el = ARMED.el;
+    if(el){
+      el.classList.remove("arm");
+      if(el.isConnected !== false) el.innerHTML = ARMED.html;
+      el.removeAttribute("data-arm");
+      var head = el.closest ? el.closest(".p-head") : null;
+      if(head) head.classList.remove("arming");
+    }
+    ARMED = null;
+  }
+
+  // 第一次点：按钮变成红色「确认删除」，第二次点才真删；4 秒不点自动恢复
+  function armOrRun(key, el, label, run){
+    if(ARMED && ARMED.key === key && ARMED.el === el){ disarm(); run(); return; }
+    disarm();
+    var html = el.innerHTML;
+    ARMED = {key:key, el:el, html:html, timer:setTimeout(disarm, ARM_MS)};
+    el.classList.add("arm");
+    el.setAttribute("data-arm", key);
+    el.innerHTML = label;
+    var head = el.closest ? el.closest(".p-head") : null;
+    if(head) head.classList.add("arming");
+  }
+
+  // 数组里按 id 找下标（撤销时用来放回原位）
+  function idxById(arr, id){
+    for(var i=0;i<arr.length;i++){ if(arr[i] && arr[i].id === id) return i; }
+    return -1;
+  }
 
   function defaults(){
     function I(name,cat,size,unit,price,note){ return {id:uid("i"),name:name,cat:cat,size:size,unit:unit,price:price,note:note||"",eachG:0}; }
@@ -3274,11 +3388,24 @@
       if(e.target.className.indexOf("del")<0) return;
       var tr=e.target.closest("tr[data-id]"); if(!tr) return;
       var id=tr.getAttribute("data-id");
-      var used = state.products.some(function(p){ return p.recipe.some(function(r){ return !rowIsBase(r) && rowRefId(r)===id; }); })
-              || (state.bases||[]).some(function(b){ return (b.recipe||[]).some(function(r){ return r.ingId===id; }); });
-      if(used && !confirm("有产品配方或自制半成品正在使用该原料，确定删除？")) return;
-      state.ingredients = state.ingredients.filter(function(i){ return i.id!==id; });
-      save(); renderAll();
+      var ing0 = ingById(id); if(!ing0) return;
+      var usedBy = state.products.filter(function(p){
+        return (p.recipe||[]).some(function(r){ return !rowIsBase(r) && rowRefId(r)===id; });
+      }).length;
+      var usedB = (state.bases||[]).filter(function(b){
+        return (b.recipe||[]).some(function(r){ return rowRefId(r)===id; });
+      }).length;
+      var used = usedBy + usedB;
+      // 先变红「确认删除」，再点一次才真删；删完还能撤销
+      armOrRun("ing:"+id, e.target, "确认删除", function(){
+        var idx = idxById(state.ingredients, id);
+        var gone = state.ingredients[idx];
+        state.ingredients.splice(idx, 1);
+        save(); renderAll();
+        pushUndo("原料「"+(gone?gone.name:id)+"」" + (used ? "（" + used + " 处配方受影响）" : ""), function(){
+          state.ingredients.splice(idx, 0, gone);
+        });
+      });
     });
 
     document.getElementById("ingSearch").addEventListener("input", renderIngredients);
@@ -3303,6 +3430,19 @@
     document.getElementById("btnAddIngBottom").addEventListener("click", addIngredient);
     var fabIng = document.getElementById("fabAddIng");
     if(fabIng) fabIng.addEventListener("click", addIngredient);
+
+    // 撤销条
+    var bar = undoBarEl();
+    if(bar){
+      bar.querySelector(".undo-btn").addEventListener("click", function(e){ e.stopPropagation(); undoLast(); });
+      bar.querySelector(".undo-x").addEventListener("click", function(e){ e.stopPropagation(); hideUndo(); });
+    }
+    // 点到别处 = 放弃「确认删除」，避免红按钮一直悬在那儿被顺手点掉
+    document.addEventListener("click", function(e){
+      if(!ARMED) return;
+      if(ARMED.el && (ARMED.el === e.target || ARMED.el.contains(e.target))) return;
+      disarm();
+    }, true);
 
     // 产品区
     var grid = document.getElementById("prodGrid");
@@ -3347,14 +3487,26 @@
       if(e.target.className.indexOf("del-r")>=0){
         var tr = e.target.closest("tr[data-rid]");
         var rid = tr.getAttribute("data-rid");
-        p.recipe = p.recipe.filter(function(r){ return r.id!==rid; });
+        var rIdx = idxById(p.recipe, rid);
+        if(rIdx < 0) return;
+        var goneRow = p.recipe[rIdx];
+        var goneName = rowName(goneRow);
+        p.recipe.splice(rIdx, 1);
         save(); renderAll();
+        pushUndo("配方行「" + goneName + "」（" + p.name + "）", function(){
+          p.recipe.splice(rIdx, 0, goneRow);
+        });
       }
       if(e.target.className.indexOf("del-p")>=0){
-        if(!confirm("删除产品「"+p.name+"」？")) return;
-        state.products = state.products.filter(function(x){ return x.id!==pid; });
-        delete ui.open[pid]; saveUi();
-        save(); renderAll();
+        armOrRun("prod:"+pid, e.target, "确认删除", function(){
+          var pIdx = idxById(state.products, pid);
+          var goneP = state.products[pIdx];
+          state.products.splice(pIdx, 1);
+          delete ui.open[pid]; saveUi();
+          save(); renderAll();
+          pushUndo("产品「" + (goneP ? goneP.name : pid) + "」及其 " + ((goneP && goneP.recipe) || []).length + " 行配方",
+            function(){ state.products.splice(pIdx, 0, goneP); });
+        });
       }
       if(e.target.className.indexOf("add-btn")>=0){
         var sel = card.querySelector(".add-sel"), amt = card.querySelector(".add-amt");
@@ -3400,20 +3552,32 @@
       var b = baseById(card.getAttribute("data-id")); if(!b) return;
       if(e.target.className.indexOf("del-b")>=0){
         var usedBy = state.products.filter(function(p){
-          return p.recipe.some(function(r){ return rowIsBase(r) && rowRefId(r)===b.id; });
+          return (p.recipe||[]).some(function(r){ return rowIsBase(r) && rowRefId(r)===b.id; });
         }).map(function(p){ return p.name; });
-        var msg = usedBy.length
-          ? "有产品配方正在用「"+b.name+"」（"+usedBy.join("、")+"），删除后这些行的成本会变成 0。确定删除？"
-          : "删除自制半成品「"+b.name+"」？";
-        if(!confirm(msg)) return;
-        state.bases = state.bases.filter(function(x){ return x.id!==b.id; });
-        save(); renderAll(); return;
+        armOrRun("base:"+b.id, e.target, "确认删除", function(){
+          var bIdx = idxById(state.bases, b.id);
+          var goneB = state.bases[bIdx];
+          state.bases.splice(bIdx, 1);
+          save(); renderAll();
+          pushUndo("自制「" + b.name + "」" + (usedBy.length ? "（" + usedBy.length + " 个产品在用）" : ""), function(){
+            state.bases.splice(bIdx, 0, goneB);
+          });
+        });
+        return;
       }
       if(e.target.className.indexOf("b-del-r")>=0){
         var tr = e.target.closest("tr[data-rid]"); if(!tr) return;
         var rid = tr.getAttribute("data-rid");
-        b.recipe = (b.recipe||[]).filter(function(r){ return r.id!==rid; });
-        save(); renderAll(); return;
+        var bIdx2 = idxById(b.recipe||[], rid);
+        if(bIdx2 < 0) return;
+        var goneRow2 = b.recipe[bIdx2];
+        var goneName2 = rowName(goneRow2);
+        b.recipe.splice(bIdx2, 1);
+        save(); renderAll();
+        pushUndo("投料「" + goneName2 + "」（" + b.name + "）", function(){
+          b.recipe.splice(bIdx2, 0, goneRow2);
+        });
+        return;
       }
       if(e.target.className.indexOf("b-add-btn")>=0){
         var sel = card.querySelector(".b-add-sel"), amt = card.querySelector(".b-add-amt");
