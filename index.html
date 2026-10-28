@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=32">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=32">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=32">
+<link rel="manifest" href="manifest.json?v=33">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=33">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=33">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -366,6 +366,8 @@
   #dInputs .d-qty{text-align:left;}
   #dInputs .d-qty::placeholder{text-align:left;color:#b3bdc8;font-size:12.5px;}
   .sim-more{margin-top:8px;}
+  .sim-hint{margin:0 0 12px;padding:7px 10px;font-size:12px;line-height:1.65;color:var(--text-2);
+    background:#f5faf9;border-left:3px solid var(--accent);border-radius:0 6px 6px 0;}
   .sim-more .mini{font-size:12px;padding:5px 11px;}
   .daybar{display:flex;align-items:flex-end;gap:3px;height:70px;margin:8px 0 4px;}
   .daybar .db{flex:1 1 auto;min-width:6px;background:var(--accent);border-radius:3px 3px 0 0;opacity:.85;position:relative;}
@@ -1043,6 +1045,7 @@
       <span class="muted" style="font-size:12px">也可在下表单独调某一项（如草莓 +20%）</span>
     </div>
     <div class="sim-more"><button id="btnSimAll" class="mini"></button></div>
+    <p class="sim-hint">自制半成品里用到的原料也会一起传导：牛奶涨 20%，用它做的酸奶底、再用酸奶底做的预拌酸奶，成本会一层层跟着涨上去。标着「经自制」的原料没有直接加进产品，是透过自制消耗掉的。</p>
     <div class="scroll-x cards">
       <table id="simTable">
         <thead>
@@ -1195,7 +1198,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v32 · 1435";
+  var BUILD = "v33 · 1530";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -1455,7 +1458,9 @@
   // 一批自制的核算：投料成本 + 其它耗材 → 摊到产出量上
   // v30：投料也能引用别的自制（预拌酸奶 ← 原味酸奶（有糖）），按对方的单位成本递归算；
   //      seen 是当前这条递归链上的自制，撞上就是绕成环了，这条按 0 计并标出来（不崩、不死循环）
-  function baseBatch(b, seen){
+  // factorMap: 模拟系数（默认 1）。v33 起一路传到自制内部的原料行上，
+  //            否则「牛奶涨价 20%」在酸奶底、预拌酸奶里完全体现不出来，模拟等于白调
+  function baseBatch(b, seen, factorMap){
     if(!b) return {mat:0, supplies:0, total:0, out:0, inG:0, rows:[], yieldRate:0, unit:0, cycle:false};
     seen = seen || {};
     var mat=0, inG=0, rows=[], cyc=false;
@@ -1470,7 +1475,7 @@
           rows.push({base:rb, amount:amt, u:(rb.unit||"g"), cost:0, cycle:true});
           return;
         }
-        var rbB = baseBatch(rb, seen);
+        var rbB = baseBatch(rb, seen, factorMap);
         if(rbB.cycle){                    // 下游有环 → 这一条也摊不出成本，一并标出来
           cyc = true;
           rows.push({base:rb, amount:amt, u:(rb.unit||"g"), cost:0, cycle:true});
@@ -1483,7 +1488,8 @@
       }
       var ing = ingById(rowRefId(r));
       if(!ing){ rows.push({missing:true, amount:(+r.amount)||0, u:(r.u||"g"), cost:0}); return; }
-      var c = amtInIngUnit(r) * unitCost(ing);
+      var rf = (factorMap && factorMap[ing.id]!=null) ? factorMap[ing.id] : 1;
+      var c = amtInIngUnit(r) * unitCost(ing) * rf;
       mat += c;
       inG += toGrams(ing, r.amount, r.u || ing.unit);
       rows.push({ing:ing, amount:r.amount, u:(r.u||ing.unit), cost:c});
@@ -1499,7 +1505,7 @@
       cycle:cyc
     };
   }
-  function baseUnitCost(b){ return baseBatch(b).unit; }
+  function baseUnitCost(b, factorMap){ return baseBatch(b, null, factorMap).unit; }
   // id 这一项（连同它下面用到的自制）会不会用到 target —— 用来判断「加进去会不会绕成环」
   function baseUsesDeep(id, target, seen){
     if(!id || !target) return false;
@@ -1565,8 +1571,9 @@
       if(rowIsBase(r)){
         var b = baseById(refId);
         if(!b) continue;
+        // 自制这一坨：先按模拟后的原料价重算它的单位成本（v33），再叠加「整项自制统一涨跌」的系数
         var fb = (factorMap && factorMap["b:"+refId]!=null) ? factorMap["b:"+refId] : 1;
-        var cb = rowAmt(r) * baseUnitCost(b) * fb;
+        var cb = rowAmt(r) * baseUnitCost(b, factorMap) * fb;
         total += cb;
         rows.push({base:b, isBase:true, name:b.name, amount:r.amount, u:(b.unit||"g"), cost:cb});
         continue;
@@ -1617,7 +1624,8 @@
   }
 
   // 原料月用量：产品里直接用的原料 + 通过自制（含自制套自制）间接消耗的原料，全拆回原料，采购量才准
-  function monthlyUsage(){
+  // direct=true：只算产品里直接用的原料（用来区分「直接加」还是「经自制间接用」）
+  function monthlyUsage(direct){
     var map={};
     function add(id, n){ if(!id) return; if(map[id]==null) map[id]=0; map[id]+=n; }
     for(var i=0;i<state.products.length;i++){
@@ -1626,6 +1634,7 @@
         var r=p.recipe[j];
         if(rowIsBase(r)){
           var b = baseById(rowRefId(r)); if(!b) continue;
+          if(direct) continue;
           baseIngUsage(b, rowAmt(r) * v, add);     // 这个月要用多少 g 自制 → 拆到底
         }else{
           add(rowRefId(r), amtInIngUnit(r) * v);
@@ -3427,6 +3436,7 @@
   var simShowAll = false;
   function renderSim(){
     var usage = monthlyUsage();
+    var directUse = monthlyUsage(true);
     var f = simFactors();
     var base = totals();
     var sim = totals(f);
@@ -3461,7 +3471,9 @@
       return '<tr data-id="'+r.ing.id+'">'
         + '<td class="c-full" data-label="">'+esc(r.ing.name)+'</td>'
         + '<td class="num muted" data-label="当前单位成本">'+num(r.uc, r.uc<1?4:2)+' /'+r.ing.unit+'</td>'
-        + '<td class="num muted" data-label="月总用量">'+num(r.u,0)+' '+r.ing.unit+'</td>'
+        + '<td class="num muted" data-label="月总用量">'+num(r.u,0)+' '+r.ing.unit
+        +   (!(directUse[r.ing.id]>0) && r.u>0 ? '<span class="tag-base" title="没有直接加进产品，是通过自制半成品消耗掉的（涨价会沿自制传导）">经自制</span>' : '')
+        + '</td>'
         + '<td class="num" data-label="月原料成本">'+money(r.mc)+'</td>'
         + '<td class="num" data-label="占原料成本">'+pct(r.share)+'</td>'
         + '<td class="num" data-label="模拟涨跌 %"><input type="number" class="s-sim" step="1" value="'+s+'"></td>'
