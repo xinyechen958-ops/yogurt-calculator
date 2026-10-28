@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=31">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=31">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=31">
+<link rel="manifest" href="manifest.json?v=32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=32">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=32">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -609,6 +609,8 @@
     .prod .p-name{font-size:13.5px;padding:3px 4px;}
     .prod .p-meta{font-size:11px;gap:4px;}
     .prod .p-meta span{padding:2px 6px;}
+    /* 窄屏下这行括号说明会让两列 label 高度不一致，输入框跟着错位 */
+    .b-form .lf-hint{display:none;}
     .prod .p-body{padding:6px 10px 10px;}
     .prod table th,.prod table td{padding:6px 4px;}
     .prod .add-row select,.prod .add-row input{font-size:14px;}
@@ -920,7 +922,12 @@
   <!-- 自制库 -->
   <section class="card" data-view="base">
     <h2>② 自制库 <span class="pill">一锅一锅做的半成品</span></h2>
-    <p class="desc">按六类分开管：<b>自制酸奶底</b>（原味/希腊/椰子…）、<b>自制预拌酸奶</b>（各口味预拌）、<b>自制果酱</b>、<b>自制风味水果</b>（糖渍/酒渍/茶渍…）、<b>自制麦片</b>、<b>自制冻冻</b>。填投料 + 每批产出量，自动算出品率和每克成本；在配方里就能像原料一样直接取用。投料也是打字搜索，<b>原料和自制半成品都能选</b> —— 预拌酸奶这类「用另一锅酸奶做的」，直接选自制里的那一项，成本会跟着它变。<br><b>+ 预拌酸奶 ▾</b> 是口味模板：点开挑一个口味，直接建好一项，投料自动连到自制库里那一锅「原味酸奶（有糖）」（找不到才退回去找原料、都没有才建一条占位并提醒填价）。口味原料找不到不会乱建，只在备注里提醒你补一行。</p>
+    <p class="desc">按六类分开管：<b>自制酸奶底</b>（原味/希腊/椰子…）、<b>自制预拌酸奶</b>（各口味预拌）、<b>自制果酱</b>、<b>自制风味水果</b>（糖渍/酒渍/茶渍…）、<b>自制麦片</b>、<b>自制冻冻</b>。填投料 + 每批产出量，自动算出品率和每克成本；在配方里就能像原料一样直接取用。投料也是打字搜索，<b>原料和自制半成品都能选</b> —— 预拌酸奶这类「用另一锅酸奶做的」，直接选自制里的那一项，成本会跟着它变。<br><b>+ 预拌酸奶 ▾</b> 是口味模板：点开挑一个口味，直接建好一项，投料自动连到自制库里那一锅「原味酸奶（有糖）」（找不到才退回去找原料、都没有才建一条占位并提醒填价）。口味原料找不到不会乱建，只在备注里提醒你补一行。<br>某一锅的做法定下来了，就勾上「<b>投料已核对无误</b>」：名称、投料用量、产出量、耗材、分类全部锁成只读，防止手滑改到单位成本（备注仍可写，它不影响成本）。上面的进度条会统计还有几项没核对。</p>
+    <div class="vbar" id="vBarBase" hidden>
+      <span class="vstat" id="vStatB">已核对 0 / 0</span>
+      <span class="vprog"><i id="vProgBarB"></i></span>
+      <button type="button" class="mini ghost" id="btnOnlyUnvB">只看待核对</button>
+    </div>
     <div class="pg-wrap" id="baseGrid"></div>
     <div class="toolbar" style="margin-top:14px;margin-bottom:0">
       <button id="btnAddPremix" class="ghost">+ 预拌酸奶 <span class="caret">▾</span></button>
@@ -1188,7 +1195,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v31 · 1132";
+  var BUILD = "v32 · 1435";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -1739,6 +1746,10 @@
       if(!baseCatValid(b.cat)) b.cat = guessBaseCat(b);
       // v29：预拌酸奶独立成组，把之前建在「自制酸奶底」里的预拌项搬过去
       else if(b.cat === "yogurt" && /预拌|premix/i.test(String(b.name || ""))) b.cat = "premix";
+      // 投料核对（v32）：勾上就锁定只读；老数据默认未核对
+      b.verified = !!b.verified;
+      if(!b.verified) b.verifiedAt = 0;
+      else if(!(+b.verifiedAt > 0)) b.verifiedAt = 0;
     });
     // 配方行：旧格式 {ingId} → 新格式 {kind:"ing"|"base", refId}；老数据一律是原料
     s.products.forEach(function(p){
@@ -1844,6 +1855,7 @@
         var o = JSON.parse(raw);
         if(o && o.open && typeof o.open === "object") ui.open = o.open;
         if(o && o.onlyUnv) ui.onlyUnv = 1;      // 只看待核对：只是界面偏好，不进同步数据
+        if(o && o.onlyUnvB) ui.onlyUnvB = 1;    // 同上，自制页那份
       }
     }catch(e){}
   })();
@@ -2623,20 +2635,23 @@
     var grid = document.getElementById("baseGrid");
     if(!grid) return;
     var bases = state.bases || [];
+    var onlyUnv = !!ui.onlyUnvB;            // v32：「只看待核对」时把已锁定的收起来
+    var shown = onlyUnv ? bases.filter(function(b){ return !b.verified; }) : bases;
     // 分类顺序固定：酸奶底 → 果酱 → 风味水果 → 麦片 → 冻冻；空分类也留着，好让用户直接往里加
     grid.innerHTML = (bases.length ? "" : '<div class="b-empty">还没有自制半成品。分类下面任意一组的「+ 新增」，把酸奶底、果酱、风味水果、麦片、冻冻这类'
         + '<b>先做一批再按克用</b>的东西录进来。<br>'
         + '如果你之前把它们当原料记在「① 原料库」里，建议在这里重建一遍 —— 这样牛奶涨价多少、出品率掉到多少，都能直接看出来。</div>')
       + BASE_CATS.map(function(c){
-        var list = bases.filter(function(b){ return baseCatOf(b) === c.k; });
+        var list = shown.filter(function(b){ return baseCatOf(b) === c.k; });
+        if(!list.length && onlyUnv) return "";   // 筛选时这一组都核对完了就整组收掉
         var head = '<div class="pg-head">'
           + '<span class="pg-title">'+esc(c.n)+'</span>'
-          + '<span class="pg-n">'+list.length+' 项</span>'
+          + '<span class="pg-n">'+list.length+(onlyUnv?' 项待核对':' 项')+'</span>'
           + '<button type="button" class="mini ghost pg-add b-add-cat" data-cat="'+c.k+'">+ 新增</button>'
           + '</div>';
         var body = list.length
           ? '<div class="prod-grid">'+ list.map(baseCardHtml).join("") +'</div>'
-          : (bases.length ? '<div class="b-empty">这一类还没有，点右上「+ 新增」加一项</div>' : '');
+          : (bases.length ? '<div class="b-empty">'+(onlyUnv ? '这一类都核对完了' : '这一类还没有，点右上「+ 新增」加一项')+'</div>' : '');
         return '<section class="pgroup'+(list.length ? "" : " is-empty")+'" data-cat="'+c.k+'">'+ head + body +'</section>';
       }).join("");
     Array.prototype.forEach.call(grid.querySelectorAll(".bcard"), function(card){
@@ -2645,10 +2660,12 @@
       amt.placeholder = "用量(" + refPlaceholder(sel.getAttribute("data-v")) + ")";
     });
     refreshDupTips();
+    renderVerifyBar();
   }
 
   // 单张自制卡片（分组渲染时复用）
   function baseCardHtml(b){
+      var lk = !!b.verified;                 // v32：投料已核对 → 整张卡只读（备注除外）
       var bb = baseBatch(b);
       var rows = (b.recipe||[]).map(function(r){
         var isB = rowIsBase(r);
@@ -2659,7 +2676,7 @@
             + '<td class="num r-amt">'+num((+r.amount)||0,0)+'</td>'
             + '<td class="num muted r-uc">—</td>'
             + '<td class="num" data-bcost="'+r.id+'">—</td>'
-            + '<td class="right r-del" style="width:44px"><button class="mini ghost b-del-r">×</button></td>'
+            + '<td class="right r-del" style="width:44px">'+(lk?'':'<button class="mini ghost b-del-r">×</button>')+'</td>'
             + '</tr>';
         }
         // 用到的自制项反过来又用到自己 → 环，成本没法算，标出来
@@ -2667,50 +2684,63 @@
         var u = isB ? (ref.unit || "g") : (r.u || ref.unit);
         var uc = isB ? baseUnitCost(ref) : unitCostIn(ref, u);
         var cost = isB ? ((+r.amount)||0) * uc : amtInIngUnit(r) * unitCost(ref);
-        var uCell = isB ? '<span data-utext="'+r.id+'">'+esc(u)+'</span>' : unitCell(ref, r);
+        var uCell = isB ? '<span data-utext="'+r.id+'">'+esc(u)+'</span>' : unitCell(ref, r, lk);
         return '<tr data-rid="'+r.id+'"'+(isB ? ' data-kind="base"' : ' data-ing="'+ref.id+'"')+'>'
           + '<td class="r-name">'+esc(ref.name)+(isB ? '<span class="tag-base">自制</span>' : '')+'</td>'
-          + '<td class="num r-amt"><span class="amt-box"><input type="number" class="b-amount" step="any" min="0" value="'+r.amount+'">'+uCell+'</span></td>'
+          + '<td class="num r-amt"><span class="amt-box"><input type="number" class="b-amount" step="any" min="0"'+(lk?' disabled':'')+' value="'+r.amount+'">'+uCell+'</span></td>'
           + '<td class="num muted r-uc" data-buc="'+r.id+'">'+num(uc, uc<1?4:2)+'</td>'
           + '<td class="num" data-bcost="'+r.id+'">'+(cyc ? '<span class="b-warn" title="这条投料又用到自己，成本算不出，先删掉其中一边">循环引用</span>' : money(cost))+'</td>'
-          + '<td class="right r-del" style="width:44px"><button class="mini ghost b-del-r">×</button></td>'
+          + '<td class="right r-del" style="width:44px">'+(lk?'':'<button class="mini ghost b-del-r">×</button>')+'</td>'
           + '</tr>';
       }).join("");
       var yl = bb.yieldRate;
       var ylTxt = bb.inG>0 ? pct(yl) : "—";
       var ylCls = (bb.inG>0 && yl<0.8) ? " b-warn" : "";
       var unitTxt = bb.out>0 ? "¥"+num(bb.unit, bb.unit<1?4:2)+"/"+esc(b.unit||"g") : "待填产出量";
-      return '<div class="prod bcard open" data-id="'+b.id+'">'
+      return '<div class="prod bcard open'+(lk?' locked':'')+'" data-id="'+b.id+'">'
         + '<div class="p-head">'
-        +   '<input type="text" class="p-name b-name" value="'+esc(b.name)+'" aria-label="自制名称">'
+        +   '<input type="text" class="p-name b-name"'+(lk?' disabled':'')+' value="'+esc(b.name)+'" aria-label="自制名称">'
         +   '<span class="p-meta">'
         +     '<span>单位成本<b data-bunit-h="'+b.id+'"> '+esc(unitTxt)+'</b></span>'
         +     '<span class="profit">出品率<b class="'+ylCls.trim()+'" data-byl="'+b.id+'"> '+esc(ylTxt)+'</b></span>'
         +   '</span>'
-        +   '<button type="button" class="del-p del-b" aria-label="删除自制" title="删除自制">&times;</button>'
+        +   (lk
+            ? '<button type="button" class="lock-chip" title="投料已核对并锁定，点这里解锁后可以修改">'
+              + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><rect x="4" y="10.5" width="16" height="9.5" rx="2.4"/><path d="M8 10.5V7.2a4 4 0 0 1 8 0v3.3"/></svg>'
+              + '<span class="lk-t">已核对</span></button>'
+            : '<button type="button" class="del-p del-b" aria-label="删除自制" title="删除自制">&times;</button>')
         + '</div>'
         + '<div class="p-body">'
         +   dupTipHtml("base", b.id, b.name)
+        +   '<div class="verify-row">'
+        +     '<label><input type="checkbox" class="b-verify"'+(lk?' checked':'')+'> 投料已核对无误</label>'
+        +     '<span class="v-note">'+(lk
+                ? (b.verifiedAt ? '已核对 '+fmtMd(b.verifiedAt)+'，这张卡已锁定' : '这张卡已锁定') + '：取消勾选可以修改'
+                : '勾上就锁定成只读，防止手滑改到单位成本')+'</span>'
+        +   '</div>'
         +   '<div class="p-catrow"><span>分类</span>'
-        +     '<select class="b-cat" title="换一个分类，这张卡片会移到对应分组">'
+        +     '<select class="b-cat"'+(lk?' disabled':'')+' title="换一个分类，这张卡片会移到对应分组">'
         +       BASE_CATS.map(function(c){ return '<option value="'+c.k+'"'+(baseCatOf(b)===c.k?" selected":"")+'>'+esc(c.n)+'</option>'; }).join("")
         +     '</select>'
-        +     '<span class="muted">改完会移到对应分组</span>'
+        +     '<span class="muted">'+(lk ? '已核对锁定，解锁后才能换组' : '改完会移到对应分组')+'</span>'
         +   '</div>'
         +   '<div class="b-form">'
-        +     '<label>每批产出量（' + esc(b.unit||"g") + '）<input type="number" class="b-out" step="any" min="0" value="'+(+b.out||0)+'" placeholder="如 4600"></label>'
-        +     '<label>其它耗材 ¥/ 批（菌种、滤网等）<input type="number" class="b-sup" step="0.01" min="0" value="'+(+b.supplies||0)+'" placeholder="0"></label>'
+        +     '<label>每批产出量（' + esc(b.unit||"g") + '）<input type="number" class="b-out" step="any" min="0"'+(lk?' disabled':'')+' value="'+(+b.out||0)+'" placeholder="如 4600"></label>'
+        +     '<label title="菌种、滤网等没进原料库的开销">其它耗材 ¥/ 批<span class="lf-hint">（菌种、滤网等）</span><input type="number" class="b-sup" step="0.01" min="0"'+(lk?' disabled':'')+' value="'+(+b.supplies||0)+'" placeholder="0"></label>'
         +     '<label>备注<input type="text" class="b-note" value="'+esc(b.note||"")+'" placeholder="发酵时长、温度等"></label>'
         +   '</div>'
         +   '<div class="scroll-x narrow"><table><thead><tr><th>投料</th><th class="num">用量 / 单位</th><th class="num r-uc">单价</th><th class="num">成本</th><th></th></tr></thead>'
         +   '<tbody>'+rows+'</tbody>'
         +   '<tfoot><tr><td colspan="3">投料成本（每批）</td><td class="num" data-bmat="'+b.id+'">'+money(bb.mat)+'</td><td></td></tr></tfoot></table></div>'
-        +   '<div class="add-row">'
-        +     '<input type="text" class="b-add-sel" data-combo="all" autocomplete="off" role="combobox" aria-expanded="false"'
-        +       ' placeholder="输入原料或自制名搜索，如 牛奶" title="原料和自制半成品都能直接搜，↑↓ 选择、回车确认">'
-        +     '<input type="number" class="b-add-amt" step="any" min="0" placeholder="用量" style="width:90px;display:inline-block;vertical-align:middle"> '
-        +     '<button class="mini b-add-btn">+ 加入投料</button>'
-        +   '</div>'
+        +   (lk
+            ? '<div class="lock-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="width:12px;height:12px;flex:0 0 auto;margin-top:1px"><rect x="4" y="10.5" width="16" height="9.5" rx="2.4"/><path d="M8 10.5V7.2a4 4 0 0 1 8 0v3.3"/></svg>'
+              + '<span>投料已核对并锁定：改投料用量、加投料、改产出量或耗材、换分类、删除都先取消上面的勾选。备注仍可写（它不影响成本）。</span></div>'
+            : '<div class="add-row">'
+              + '<input type="text" class="b-add-sel" data-combo="all" autocomplete="off" role="combobox" aria-expanded="false"'
+              +   ' placeholder="输入原料或自制名搜索，如 牛奶" title="原料和自制半成品都能直接搜，↑↓ 选择、回车确认">'
+              + '<input type="number" class="b-add-amt" step="any" min="0" placeholder="用量" style="width:90px;display:inline-block;vertical-align:middle"> '
+              + '<button class="mini b-add-btn">+ 加入投料</button>'
+              + '</div>')
         +   '<div class="summary">'
         +     '<div class="sum-item"><div class="s-l">投料总量</div><div class="s-v" data-bin="'+b.id+'">'+(bb.inG>0?num(bb.inG,0)+" g":"—")+'</div></div>'
         +     '<div class="sum-item"><div class="s-l">每批总成本</div><div class="s-v" data-btot="'+b.id+'">'+money(bb.total)+'</div></div>'
@@ -2790,24 +2820,30 @@
     });
     refreshDupTips();
   }
-  // 已核对 / 待核对 的进度条（v31）
-  function renderVerifyBar(){
-    var bar = document.getElementById("vBar"); if(!bar) return;
-    var all = state.products || [], total = all.length;
+  // 已核对 / 待核对 的进度条（v31 产品、v32 自制共用同一套）
+  function fillVerifyBar(o){
+    var bar = document.getElementById(o.bar); if(!bar) return;
+    var total = o.list.length;
     if(!total){ bar.hidden = true; return; }
     bar.hidden = false;
-    var done = all.filter(function(p){ return !!p.verified; }).length;
+    var done = o.list.filter(function(x){ return !!x.verified; }).length;
     var left = total - done;
-    var st = document.getElementById("vStat");
-    if(st) st.textContent = "已核对 " + done + " / " + total + (left ? "，还有 "+left+" 款待核对" : "，全部核对完成");
-    var pb = document.getElementById("vProgBar");
+    var st = document.getElementById(o.stat);
+    if(st) st.textContent = "已核对 " + done + " / " + total + (left ? "，还有 "+left+o.word+"待核对" : "，全部核对完成");
+    var pb = document.getElementById(o.prog);
     if(pb) pb.style.width = Math.round(done/total*100) + "%";
-    var btn = document.getElementById("btnOnlyUnv");
+    var btn = document.getElementById(o.btn);
     if(btn){
-      btn.textContent = ui.onlyUnv ? "显示全部（"+total+"）" : "只看待核对" + (left ? "（"+left+"）" : "");
-      btn.classList.toggle("on", !!ui.onlyUnv);
-      btn.disabled = !left && !ui.onlyUnv;
+      btn.textContent = o.on ? "显示全部（"+total+"）" : "只看待核对" + (left ? "（"+left+"）" : "");
+      btn.classList.toggle("on", !!o.on);
+      btn.disabled = !left && !o.on;
     }
+  }
+  function renderVerifyBar(){
+    fillVerifyBar({bar:"vBar", stat:"vStat", prog:"vProgBar", btn:"btnOnlyUnv", word:" 款",
+                   list: state.products || [], on: !!ui.onlyUnv});
+    fillVerifyBar({bar:"vBarBase", stat:"vStatB", prog:"vProgBarB", btn:"btnOnlyUnvB", word:" 项",
+                   list: state.bases || [], on: !!ui.onlyUnvB});
   }
 
   // 单个产品卡片
@@ -3193,10 +3229,10 @@
     lines.push("");
     lines.push("【自制半成品库】");
     if((state.bases||[]).length){
-      lines.push(csvRows([["自制分类","自制名称","投料总量(g)","每批产出(g)","出品率%","投料成本(元)","其它耗材(元)","每批总成本(元)","单位成本(元/g)","备注"]]));
+      lines.push(csvRows([["自制分类","自制名称","投料核对","投料总量(g)","每批产出(g)","出品率%","投料成本(元)","其它耗材(元)","每批总成本(元)","单位成本(元/g)","备注"]]));
       state.bases.forEach(function(b){
         var bb = baseBatch(b);
-        lines.push(csvRows([[baseCatName(baseCatOf(b)), b.name, bb.inG.toFixed(1), bb.out.toFixed(1), (bb.yieldRate*100).toFixed(1),
+        lines.push(csvRows([[baseCatName(baseCatOf(b)), b.name, b.verified ? "已核对" : "未核对", bb.inG.toFixed(1), bb.out.toFixed(1), (bb.yieldRate*100).toFixed(1),
           bb.mat.toFixed(2), bb.supplies.toFixed(2), bb.total.toFixed(2), num(bb.unit, bb.unit<1?4:2), b.note||""]]));
       });
       lines.push("");
@@ -4027,6 +4063,11 @@
       if(ui.onlyUnv) delete ui.onlyUnv; else ui.onlyUnv = 1;
       saveUi(); renderProducts();
     });
+    var btnOnlyUnvB = document.getElementById("btnOnlyUnvB");
+    if(btnOnlyUnvB) btnOnlyUnvB.addEventListener("click", function(){
+      if(ui.onlyUnvB) delete ui.onlyUnvB; else ui.onlyUnvB = 1;
+      saveUi(); renderBases();
+    });
 
     /* ---------- 自制页交互 ---------- */
     /* ---------- 自制快捷模板（v28 起，v29 扩成「预拌酸奶」多口味）----------
@@ -4236,6 +4277,15 @@
     document.getElementById("baseGrid").addEventListener("click", function(e){
       var card = e.target.closest(".bcard"); if(!card) return;
       var b = baseById(card.getAttribute("data-id")); if(!b) return;
+      // 头部的「已核对」锁标：点了就解锁（不删数据，只是恢复可编辑）
+      if(e.target.closest && e.target.closest(".lock-chip")){
+        b.verified = false; b.verifiedAt = 0;
+        save(); renderBases();
+        flashEl(card);
+        return;
+      }
+      // 已核对锁定：改投料、删除都不给，只能先取消勾选（或点锁标）
+      if(b.verified) return;
       if(e.target.className.indexOf("del-b")>=0){
         var usedBy = state.products.filter(function(p){
           return (p.recipe||[]).some(function(r){ return rowIsBase(r) && rowRefId(r)===b.id; });
@@ -4299,6 +4349,8 @@
       var card = e.target.closest(".bcard"); if(!card) return;
       var b = baseById(card.getAttribute("data-id")); if(!b) return;
       var cls = e.target.className || "";
+      // 备注不影响成本，锁定了也允许接着写
+      if(b.verified && cls.indexOf("b-note")<0) return;
       if(cls.indexOf("b-name")>=0){ b.name = e.target.value; refreshDupTips(); }
       else if(cls.indexOf("b-out")>=0){ b.out = parseFloat(e.target.value) || 0; }
       else if(cls.indexOf("b-sup")>=0){ b.supplies = parseFloat(e.target.value) || 0; }
@@ -4318,6 +4370,14 @@
     document.getElementById("baseGrid").addEventListener("change", function(e){
       var card = e.target.closest(".bcard"); if(!card) return;
       var b = baseById(card.getAttribute("data-id")); if(!b) return;
+      // 核对勾选框：勾上 → 整张卡锁定；取消 → 恢复可编辑
+      if(e.target.classList && e.target.classList.contains("b-verify")){
+        b.verified = !!e.target.checked;
+        b.verifiedAt = b.verified ? Date.now() : 0;
+        save(); renderBases(); refreshBaseDeps(b.id);
+        return;
+      }
+      if(b.verified) return;
       if((e.target.className||"").indexOf("b-cat")>=0){
         var ck = e.target.value;
         if(baseCatValid(ck) && ck !== baseCatOf(b)){
