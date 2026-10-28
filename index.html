@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="酸奶算账">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json?v=30">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=30">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=30">
+<link rel="manifest" href="manifest.json?v=31">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=31">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=31">
 <title>希腊酸奶店 · 成本利润计算器</title>
 <style>
   :root{
@@ -146,11 +146,47 @@
   .pg-head .pg-add{margin-left:auto;font-size:12px;padding:4px 10px;}
   .p-catrow{display:flex;align-items:center;gap:7px;padding:0 0 9px;font-size:12px;color:var(--text-3);flex-wrap:nowrap;
     font-weight:600;}
-  .p-catrow>span:first-of-type{color:var(--text-2);font-weight:700;}
+  .p-catrow>span:first-of-type{color:var(--text-2);font-weight:700;white-space:nowrap;flex:0 0 auto;}
   .p-catrow select{padding:4px 7px;border:1px solid #e0e6ed;border-radius:8px;font-size:12.5px;
     background:#fcfdfe;color:var(--text);flex:0 0 auto;min-width:116px;max-width:170px;}
   .p-catrow select:focus{background:#fff;}
   .p-catrow .muted{flex:1 1 auto;min-width:0;font-size:11.5px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  /* 配方核对（v31）：勾上「配方已核对无误」这张卡就锁成只读，防止手滑改到成本 */
+  .vbar{display:flex;align-items:center;gap:9px;margin:0 0 10px;font-size:12px;color:var(--text-3);flex-wrap:wrap;}
+  .vbar[hidden]{display:none;}
+  .vbar .vstat{font-weight:800;color:#0b5f59;white-space:nowrap;font-variant-numeric:tabular-nums;letter-spacing:.2px;}
+  .vbar .vprog{flex:1 1 90px;min-width:56px;height:6px;border-radius:999px;background:#dde5ea;overflow:hidden;}
+  .vbar .vprog i{display:block;height:100%;width:0;border-radius:999px;background:var(--accent);transition:width .2s;}
+  .vbar .mini{font-size:11.5px;padding:3px 9px;}
+  .vbar .mini.on{background:var(--accent-soft);border-color:var(--accent);color:#0b7d72;font-weight:700;}
+  .vbar .mini[disabled]{opacity:.5;cursor:default;}
+  .verify-row{display:flex;align-items:center;gap:8px;padding:0 0 9px;font-size:12.5px;color:var(--text-2);flex-wrap:wrap;}
+  .verify-row label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:700;}
+  .verify-row input[type=checkbox]{width:16px;height:16px;margin:0;accent-color:var(--accent);cursor:pointer;flex:0 0 auto;}
+  .verify-row .v-note{font-size:11.5px;color:var(--text-3);font-weight:400;}
+  .prod.locked{border-color:#cfe8e3;}
+  .prod.locked .p-head{background:#f5fbfa;}
+  .prod.locked .verify-row{color:#0b7d72;}
+  .prod.locked .p-name[disabled],.prod.locked input[disabled],.prod.locked select[disabled]{
+    color:var(--text);-webkit-text-fill-color:var(--text);opacity:1;cursor:default;
+    background:#f5f9f9 !important;border-color:#e4eeec !important;}
+  .prod.locked .p-name[disabled]{background:transparent !important;border-color:transparent !important;}
+  .prod.locked .p-name[disabled]:hover{border-color:transparent !important;background:transparent !important;}
+  .lock-chip{grid-area:del;display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;
+    border:1px solid rgba(13,148,136,.28);border-radius:999px;background:rgba(13,148,136,.08);
+    color:#0b7d72;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer;}
+  .lock-chip:hover{background:rgba(13,148,136,.16);}
+  .lock-chip svg{width:11px;height:11px;display:block;flex:0 0 auto;}
+  @media (max-width:480px){
+    /* 手机上一行放不下「成本 + 毛利 + 已核对」，锁标只留图标，把位置让给产品名 */
+    .lock-chip{padding:0 6px;}
+    .lock-chip .lk-t{display:none;}
+    /* 进度条自己占一行，数字和按钮排上面 */
+    .vbar .vprog{order:3;flex:1 1 100%;}
+    .vbar .vstat{flex:1 1 auto;}
+  }
+  .lock-note{display:flex;align-items:flex-start;gap:6px;margin-top:7px;padding:7px 10px;
+    border:1px dashed #cfe8e3;background:#f5fbfa;border-radius:8px;font-size:12px;color:#0b7d72;line-height:1.5;}
   /* 重名提醒：名称下面那条小提示，点一下跳到重复的那条 */
   .dup-tip{display:none;width:100%;margin-top:3px;padding:3px 7px;border-radius:7px;
     font-family:inherit;font-size:11px;line-height:1.45;text-align:left;font-weight:400;letter-spacing:0;
@@ -906,7 +942,12 @@
   <!-- 配方 -->
   <section class="card" data-view="recipe">
     <h2>③ 配方与单碗成本 <span class="pill">按产品配置用量</span></h2>
-    <p class="desc">产品按 <b>酸奶碗 / 酸奶罐罐 / 酸奶昔 / 饮品 / 三明治</b> 分组；展开卡片，在「分类」里可以把它挪到别的组，也可以直接点各组的「+ 新增」。用量单位与原料库一致；按「个」采购又按「克」用的原料，可切换单位。明细默认收起，点箭头展开编辑。原料多的时候，直接在「加入配方」框里打字搜名称（或分类，如「水果」）。</p>
+    <p class="desc">产品按 <b>酸奶碗 / 酸奶罐罐 / 酸奶昔 / 饮品 / 三明治</b> 分组；展开卡片，在「分类」里可以把它挪到别的组，也可以直接点各组的「+ 新增」。用量单位与原料库一致；按「个」采购又按「克」用的原料，可切换单位。明细默认收起，点箭头展开编辑。原料多的时候，直接在「加入配方」框里打字搜名称（或分类，如「水果」）。<br>定稿一款就勾上「<b>配方已核对无误</b>」，这张卡立刻锁成只读，防止手滑改到成本；要改再取消勾选。上面的进度条会统计还有几款没核对。</p>
+    <div class="vbar" id="vBar" hidden>
+      <span class="vstat" id="vStat">已核对 0 / 0</span>
+      <span class="vprog"><i id="vProgBar"></i></span>
+      <button type="button" class="mini ghost" id="btnOnlyUnv">只看待核对</button>
+    </div>
     <div class="pg-wrap" id="prodGrid"></div>
     <div class="toolbar" style="margin-top:14px;margin-bottom:0">
       <button id="btnAddProd">+ 新增产品（酸奶碗）</button>
@@ -1147,7 +1188,7 @@
   "use strict";
 
   var STORE_KEY = "yogurt-calc-v1";
-  var BUILD = "v30 · 2137";
+  var BUILD = "v31 · 1132";
   var CATS = {
     base:{name:"酸奶基底",cls:"base"},
     cereal:{name:"麦片谷物",cls:"cereal"},
@@ -1669,6 +1710,7 @@
   }
   function num(n,d){ d = (d==null?2:d); return (Math.round(n*Math.pow(10,d))/Math.pow(10,d)).toFixed(d); }
   function pct(n,d){ d=(d==null?1:d); return (n*100).toFixed(d)+"%"; }
+  function fmtMd(ts){ var d = new Date((+ts)||0); return (d.getMonth()+1) + "/" + d.getDate(); }
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
 
   /* ---------- 持久化 ---------- */
@@ -1707,6 +1749,10 @@
       // 产品分类：v18 新增，老数据按名字猜一个（碗 / 昔 / 饮品 / 三明治 / 其他）
       // 非法值（手改过 JSON）也要重猜，否则卡片会掉出所有分组
       if(!prodCatValid(p.cat)) p.cat = guessProdCat(p);
+      // 配方核对（v31）：勾上就锁定只读；老数据默认未核对
+      p.verified = !!p.verified;
+      if(!p.verified) p.verifiedAt = 0;
+      else if(!(+p.verifiedAt > 0)) p.verifiedAt = 0;
     });
     // 自制投料行：v30 起也能引用别的自制（预拌酸奶 ← 原味酸奶（有糖）），旧行全是原料
     s.bases.forEach(function(b){
@@ -1794,7 +1840,11 @@
   (function(){
     try{
       var raw = localStorage.getItem(UI_KEY);
-      if(raw){ var o = JSON.parse(raw); if(o && o.open && typeof o.open === "object") ui.open = o.open; }
+      if(raw){
+        var o = JSON.parse(raw);
+        if(o && o.open && typeof o.open === "object") ui.open = o.open;
+        if(o && o.onlyUnv) ui.onlyUnv = 1;      // 只看待核对：只是界面偏好，不进同步数据
+      }
     }catch(e){}
   })();
   function saveUi(){ try{ localStorage.setItem(UI_KEY, JSON.stringify(ui)); }catch(e){} }
@@ -2557,10 +2607,10 @@
   }
 
   // 配方行的单位单元格：始终跟随原料；采购按「个」且填了每件净重时可切 g
-  function unitCell(ing, r){
+  function unitCell(ing, r, locked){
     var u = r.u || ing.unit;
     if(ing.unit === "个" && ing.eachG > 0){
-      return '<select class="r-u" title="可按「个」或按「g」计量，自动按原料规格换算">'
+      return '<select class="r-u"'+(locked?' disabled':'')+' title="可按「个」或按「g」计量，自动按原料规格换算">'
         + '<option value="个"'+(u==="个"?" selected":"")+'>个</option>'
         + '<option value="g"'+(u==="g"?" selected":"")+'>g</option>'
         + '</select>';
@@ -2708,20 +2758,28 @@
   /* ---------- 渲染：产品配方（按分类分组） ---------- */
   function renderProducts(){
     var grid = document.getElementById("prodGrid");
+    renderVerifyBar();
     if(!state.products.length){ grid.innerHTML='<div class="empty">还没有产品，点下方「新增产品」</div>'; return; }
+    var onlyUnv = !!ui.onlyUnv;
+    var leftN = state.products.filter(function(p){ return !p.verified; }).length;
+    if(onlyUnv && !leftN){
+      grid.innerHTML = '<div class="empty">全部 '+state.products.length+' 款配方都已核对完成，没有待核对的了。</div>';
+      return;
+    }
     // 分类顺序固定：酸奶碗 → 酸奶罐罐 → 酸奶昔 → 饮品 → 三明治 → 其他
     // 「其他」没有内容就不显示；五个主分类即使为空也留着，好让用户直接往里加
     grid.innerHTML = PROD_CATS.map(function(c){
-      var list = state.products.filter(function(p){ return prodCatOf(p) === c.k; });
-      if(!list.length && c.k === "other") return "";
+      var list = state.products.filter(function(p){ return prodCatOf(p) === c.k && (!onlyUnv || !p.verified); });
+      // 「其他」没内容不显示；「只看待核对」时，核对完的分类整组收掉，别留一堆空壳
+      if(!list.length && (c.k === "other" || onlyUnv)) return "";
       var head = '<div class="pg-head">'
         + '<span class="pg-title">'+esc(c.n)+'</span>'
-        + '<span class="pg-n">'+list.length+' 款</span>'
+        + '<span class="pg-n">'+list.length+(onlyUnv?" 款待核对":" 款")+'</span>'
         + '<button type="button" class="mini ghost pg-add" data-cat="'+c.k+'">+ 新增</button>'
         + '</div>';
       var body = list.length
         ? '<div class="prod-grid">'+ list.map(prodCardHtml).join("") +'</div>'
-        : '<div class="empty" style="padding:2px 2px 8px">这一类还没有产品</div>';
+        : '<div class="empty" style="padding:2px 2px 8px">'+(onlyUnv ? '这一类都核对完了' : '这一类还没有产品')+'</div>';
       return '<section class="pgroup'+(list.length ? "" : " is-empty")+'" data-cat="'+c.k+'">'+ head + body +'</section>';
     }).join("");
     // 「加入配方」输入框的占位符跟随所选项单位（原料或自制）
@@ -2732,9 +2790,29 @@
     });
     refreshDupTips();
   }
+  // 已核对 / 待核对 的进度条（v31）
+  function renderVerifyBar(){
+    var bar = document.getElementById("vBar"); if(!bar) return;
+    var all = state.products || [], total = all.length;
+    if(!total){ bar.hidden = true; return; }
+    bar.hidden = false;
+    var done = all.filter(function(p){ return !!p.verified; }).length;
+    var left = total - done;
+    var st = document.getElementById("vStat");
+    if(st) st.textContent = "已核对 " + done + " / " + total + (left ? "，还有 "+left+" 款待核对" : "，全部核对完成");
+    var pb = document.getElementById("vProgBar");
+    if(pb) pb.style.width = Math.round(done/total*100) + "%";
+    var btn = document.getElementById("btnOnlyUnv");
+    if(btn){
+      btn.textContent = ui.onlyUnv ? "显示全部（"+total+"）" : "只看待核对" + (left ? "（"+left+"）" : "");
+      btn.classList.toggle("on", !!ui.onlyUnv);
+      btn.disabled = !left && !ui.onlyUnv;
+    }
+  }
 
   // 单个产品卡片
   function prodCardHtml(p){
+      var lk = !!p.verified;                     // 已核对 → 整张卡只读
       var rc = recipeCost(p);
       var rows = rc.rows.slice().sort(function(a,b){ return b.cost-a.cost; });
       var maxc = rows.length? rows[0].cost : 1;
@@ -2755,14 +2833,15 @@
         var isB = rowIsBase(r);
         var badge = isB ? '<span class="tag-base">自制</span>' : '';
         var nm = esc(rowName(r));
+        var dis = lk ? ' disabled' : '';
         var amtCell;
         if(isB){
           var b0 = baseById(rowRefId(r));
-          amtCell = '<span class="amt-box"><input type="number" class="r-amount" step="any" min="0" value="'+r.amount+'">'
+          amtCell = '<span class="amt-box"><input type="number" class="r-amount" step="any" min="0"'+dis+' value="'+r.amount+'">'
             + '<span data-utext="'+r.id+'">'+((b0 && b0.unit) || "g")+'</span></span>';
         }else{
           var ing0 = ingById(rowRefId(r)); if(!ing0) return "";
-          amtCell = '<span class="amt-box"><input type="number" class="r-amount" step="any" min="0" value="'+r.amount+'">'+unitCell(ing0,r)+'</span>';
+          amtCell = '<span class="amt-box"><input type="number" class="r-amount" step="any" min="0"'+dis+' value="'+r.amount+'">'+unitCell(ing0,r,lk)+'</span>';
         }
         var uc = rowUnitCostIn(r);
         return '<tr data-rid="'+r.id+'" data-ref="'+rowRefId(r)+'" data-kind="'+(isB?"base":"ing")+'">'
@@ -2770,38 +2849,51 @@
           + '<td class="num r-amt">'+amtCell+'</td>'
           + '<td class="num muted r-uc" data-uc="'+r.id+'">'+num(uc, uc<1?4:2)+'</td>'
           + '<td class="num r-cost" data-cost="'+r.id+'">'+money(rowCost(r))+'</td>'
-          + '<td class="right r-del" style="width:44px"><button class="mini ghost del-r">×</button></td>'
+          + '<td class="right r-del" style="width:44px">'+(lk?'':'<button class="mini ghost del-r">×</button>')+'</td>'
           + '</tr>';
       }).join("");
 
       var isOpenNow = isOpen(p.id);
-      return '<div class="prod'+(isOpenNow?' open':'')+'" data-id="'+p.id+'">'
+      return '<div class="prod'+(isOpenNow?' open':'')+(lk?' locked':'')+'" data-id="'+p.id+'">'
         + '<div class="p-head">'
         +   '<button type="button" class="p-toggle" aria-expanded="'+(isOpenNow?'true':'false')+'" title="展开 / 收起配方明细"><i>&#9656;</i></button>'
-        +   '<input type="text" class="p-name" value="'+esc(p.name)+'">'
+        +   '<input type="text" class="p-name"'+(lk?' disabled':'')+' value="'+esc(p.name)+'">'
         +   '<span class="p-meta">'
         +     '<span>成本<b data-headtotal="'+p.id+'">'+money(rc.total)+'</b></span>'
         +     '<span class="profit">毛利<b data-headprofit="'+p.id+'">'+money(unitProfit(p))+'</b></span>'
         +   '</span>'
-        +   '<button type="button" class="del-p" aria-label="删除产品" title="删除产品">&times;</button>'
+        +   (lk
+            ? '<button type="button" class="lock-chip" title="配方已核对并锁定，点这里解锁后可以修改">'
+              + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><rect x="4" y="10.5" width="16" height="9.5" rx="2.4"/><path d="M8 10.5V7.2a4 4 0 0 1 8 0v3.3"/></svg>'
+              + '<span class="lk-t">已核对</span></button>'
+            : '<button type="button" class="del-p" aria-label="删除产品" title="删除产品">&times;</button>')
         + '</div>'
         + '<div class="p-body">'
         +   dupTipHtml("prod", p.id, p.name)
+        +   '<div class="verify-row">'
+        +     '<label><input type="checkbox" class="p-verify"'+(lk?' checked':'')+'> 配方已核对无误</label>'
+        +     '<span class="v-note">'+(lk
+                ? (p.verifiedAt ? '已核对 '+fmtMd(p.verifiedAt)+'，这张卡已锁定' : '这张卡已锁定') + '：取消勾选可以修改'
+                : '勾上就锁定成只读，防止手滑改到成本')+'</span>'
+        +   '</div>'
         +   '<div class="p-catrow"><span>分类</span>'
-        +     '<select class="p-cat" title="换一个分类，这张卡片会移到对应分组">'
+        +     '<select class="p-cat"'+(lk?' disabled':'')+' title="换一个分类，这张卡片会移到对应分组">'
         +       PROD_CATS.map(function(c){ return '<option value="'+c.k+'"'+(prodCatOf(p)===c.k?" selected":"")+'>'+esc(c.n)+'</option>'; }).join("")
         +     '</select>'
-        +     '<span class="muted">改完会移到对应分组</span>'
+        +     '<span class="muted">'+(lk ? '已核对锁定，解锁后才能换组' : '改完会移到对应分组')+'</span>'
         +   '</div>'
         +   '<div class="scroll-x narrow"><table><thead><tr><th>原料</th><th class="num">用量 / 单位</th><th class="num r-uc">单价</th><th class="num">成本</th><th></th></tr></thead>'
         +   '<tbody>'+recipeRows+'</tbody>'
         +   '<tfoot><tr><td colspan="3">单碗原料成本</td><td class="num" data-total="'+p.id+'">'+money(rc.total)+'</td><td></td></tr></tfoot></table></div>'
-        +   '<div class="add-row">'
-        +     '<input type="text" class="add-sel" data-combo="all" autocomplete="off" role="combobox" aria-expanded="false"'
-        +       ' placeholder="输入名称搜索，如 蓝莓 / 酸奶" title="可以直接打字搜索，↑↓ 选择、回车确认">'
-        +     '<input type="number" class="add-amt" step="any" min="0" placeholder="用量" style="width:90px;display:inline-block;vertical-align:middle"> '
-        +     '<button class="mini add-btn">+ 加入配方</button>'
-        +   '</div>'
+        +   (lk
+            ? '<div class="lock-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="width:12px;height:12px;flex:0 0 auto;margin-top:1px"><rect x="4" y="10.5" width="16" height="9.5" rx="2.4"/><path d="M8 10.5V7.2a4 4 0 0 1 8 0v3.3"/></svg>'
+              + '<span>配方已核对并锁定：改用量、加原料、换分类、删除都先取消上面的勾选。售价和日销量在「④ 售价」页照常能改。</span></div>'
+            : '<div class="add-row">'
+              + '<input type="text" class="add-sel" data-combo="all" autocomplete="off" role="combobox" aria-expanded="false"'
+              +   ' placeholder="输入名称搜索，如 蓝莓 / 酸奶" title="可以直接打字搜索，↑↓ 选择、回车确认">'
+              + '<input type="number" class="add-amt" step="any" min="0" placeholder="用量" style="width:90px;display:inline-block;vertical-align:middle"> '
+              + '<button class="mini add-btn">+ 加入配方</button>'
+              + '</div>')
         +   '<div class="costline">'+bars+'</div>'
         +   '<div class="legend">'+legend+'</div>'
         +   '<div class="summary">'
@@ -3090,11 +3182,12 @@
     })));
     lines.push("");
     lines.push("【产品与定价】");
-    lines.push(csvRows([["产品","分类","售价(元)","日销量(碗)","单碗原料成本(元)","单碗毛利(元)","毛利率","单碗成本合计(元)"]]));
+    lines.push(csvRows([["产品","分类","配方核对","售价(元)","日销量(碗)","单碗原料成本(元)","单碗毛利(元)","毛利率","单碗成本合计(元)"]]));
     lines.push(csvRows(state.products.map(function(p){
       var rc = recipeCost(p).total;
       var up = unitProfit(p);
-      return [p.name, prodCatName(prodCatOf(p)), priceOf(p), p.daily||0, rc.toFixed(2), up.toFixed(2),
+      return [p.name, prodCatName(prodCatOf(p)), p.verified ? "已核对" : "未核对",
+              priceOf(p), p.daily||0, rc.toFixed(2), up.toFixed(2),
               (margin(p)*100).toFixed(1)+"%", (priceOf(p) - up).toFixed(2)];
     })));
     lines.push("");
@@ -3825,6 +3918,7 @@
       var card = e.target.closest(".prod[data-id]"); if(!card) return;
       var pid = card.getAttribute("data-id");
       var p = state.products.filter(function(x){return x.id===pid;})[0]; if(!p) return;
+      if(p.verified) return;                        // 已核对锁定：输入框本身是 disabled，这里再兜一层
       if(e.target.className.indexOf("p-name")>=0){ p.name=e.target.value; renderPrice(); refresh(); save(); refreshDupTips(); return; }
       if(e.target.className.indexOf("r-amount")>=0){
         var tr = e.target.closest("tr[data-rid]");
@@ -3837,6 +3931,14 @@
       var card = e.target.closest(".prod[data-id]"); if(!card) return;
       var pid = card.getAttribute("data-id");
       var p = state.products.filter(function(x){return x.id===pid;})[0]; if(!p) return;
+      // 核对勾选框：勾上 → 整张卡锁定；取消 → 恢复可编辑
+      if(e.target.classList && e.target.classList.contains("p-verify")){
+        p.verified = !!e.target.checked;
+        p.verifiedAt = p.verified ? Date.now() : 0;
+        save(); renderProducts();
+        return;
+      }
+      if(p.verified) return;
       if(e.target.className.indexOf("p-cat")>=0){
         var k = e.target.value;
         if(k && k !== p.cat){ p.cat = k; save(); renderProducts(); renderPrice(); }
@@ -3856,9 +3958,17 @@
       var card = e.target.closest(".prod[data-id]"); if(!card) return;
       var pid = card.getAttribute("data-id");
       var p = state.products.filter(function(x){return x.id===pid;})[0]; if(!p) return;
-      // 展开 / 收起配方明细（点头条或箭头；点输入框、按钮不触发）
+      // 头部的「已核对」锁标：点了就解锁（不删数据，只是恢复可编辑）
+      if(e.target.closest(".lock-chip")){
+        p.verified = false; p.verifiedAt = 0;
+        save(); renderProducts();
+        flashEl(card);
+        return;
+      }
+      // 已核对锁定：还能展开看、能点锁标解锁，其余编辑动作一律不理
       if(e.target.closest(".p-toggle") || e.target.closest(".p-meta")){ toggleProd(pid, card); return; }
       if(e.target.classList && e.target.classList.contains("p-head")){ toggleProd(pid, card); return; }
+      if(p.verified) return;
       if(e.target.className.indexOf("del-r")>=0){
         var tr = e.target.closest("tr[data-rid]");
         var rid = tr.getAttribute("data-rid");
@@ -3911,6 +4021,12 @@
       if(el && el.scrollIntoView) el.scrollIntoView({block:"center", behavior:"smooth"});
     }
     document.getElementById("btnAddProd").addEventListener("click", function(){ addProduct("bowl"); });
+    // 「只看待核对」：核对到一半时把已锁定的收掉，一屏看完剩下的
+    var btnOnlyUnv = document.getElementById("btnOnlyUnv");
+    if(btnOnlyUnv) btnOnlyUnv.addEventListener("click", function(){
+      if(ui.onlyUnv) delete ui.onlyUnv; else ui.onlyUnv = 1;
+      saveUi(); renderProducts();
+    });
 
     /* ---------- 自制页交互 ---------- */
     /* ---------- 自制快捷模板（v28 起，v29 扩成「预拌酸奶」多口味）----------
